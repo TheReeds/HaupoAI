@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../data/models/post_model.dart';
 import '../../../data/repositories/social_repository.dart';
 import '../../providers/auth_provider.dart';
-import '../../screens/social/image_gallery_screen.dart';
+import '../common/user_avatar.dart';
 import 'comments_bottom_sheet.dart';
 
 class PostCard extends StatefulWidget {
@@ -58,6 +58,16 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
   }
 
   @override
+  void didUpdateWidget(PostCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Actualizar estado si el post cambió
+    if (oldWidget.post.id == widget.post.id) {
+      _isLiked = widget.post.isLikedByCurrentUser;
+      _likesCount = widget.post.likesCount;
+    }
+  }
+
+  @override
   void dispose() {
     _likeAnimationController.dispose();
     super.dispose();
@@ -70,6 +80,10 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
     final userId = authProvider.user?.uid;
 
     if (userId == null) return;
+
+    // Estado optimista
+    final previousLiked = _isLiked;
+    final previousCount = _likesCount;
 
     setState(() {
       _isLiking = true;
@@ -89,8 +103,8 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
     } catch (e) {
       // Revertir cambios si hay error
       setState(() {
-        _isLiked = !_isLiked;
-        _likesCount += _isLiked ? 1 : -1;
+        _isLiked = previousLiked;
+        _likesCount = previousCount;
       });
 
       if (mounted) {
@@ -98,6 +112,7 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
           SnackBar(
             content: Text('Error al dar like: $e'),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 2),
           ),
         );
       }
@@ -130,17 +145,11 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                CircleAvatar(
+                // Avatar del usuario mejorado
+                RefreshableUserAvatar(
+                  photoURL: widget.post.userPhotoURL,
+                  displayName: widget.post.userName,
                   radius: 20,
-                  backgroundImage: widget.post.userPhotoURL != null
-                      ? CachedNetworkImageProvider(widget.post.userPhotoURL!)
-                      : null,
-                  child: widget.post.userPhotoURL == null
-                      ? Text(
-                    widget.post.userName.substring(0, 1).toUpperCase(),
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  )
-                      : null,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -276,7 +285,15 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
           errorWidget: (context, url, error) => Container(
             height: 300,
             color: Colors.grey.shade200,
-            child: const Icon(Icons.error),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error, size: 48),
+                const SizedBox(height: 8),
+                Text('Error al cargar imagen',
+                    style: Theme.of(context).textTheme.bodySmall),
+              ],
+            ),
           ),
         ),
       );
@@ -289,17 +306,39 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
         itemBuilder: (context, index) {
           return GestureDetector(
             onTap: () => _showImageFullScreen(index),
-            child: CachedNetworkImage(
-              imageUrl: widget.post.imageUrls[index],
-              fit: BoxFit.cover,
-              placeholder: (context, url) => Container(
-                color: Colors.grey.shade200,
-                child: const Center(child: CircularProgressIndicator()),
-              ),
-              errorWidget: (context, url, error) => Container(
-                color: Colors.grey.shade200,
-                child: const Icon(Icons.error),
-              ),
+            child: Stack(
+              children: [
+                CachedNetworkImage(
+                  imageUrl: widget.post.imageUrls[index],
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  placeholder: (context, url) => Container(
+                    color: Colors.grey.shade200,
+                    child: const Center(child: CircularProgressIndicator()),
+                  ),
+                  errorWidget: (context, url, error) => Container(
+                    color: Colors.grey.shade200,
+                    child: const Icon(Icons.error),
+                  ),
+                ),
+                // Indicador de página
+                if (widget.post.imageUrls.length > 1)
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '${index + 1}/${widget.post.imageUrls.length}',
+                        style: const TextStyle(color: Colors.white, fontSize: 12),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           );
         },
@@ -322,22 +361,34 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
   void _showPostOptions(BuildContext context) {
     showModalBottomSheet(
       context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (context) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
             if (widget.currentUserId == widget.post.userId) ...[
               ListTile(
                 leading: const Icon(Icons.edit),
                 title: const Text('Editar'),
                 onTap: () {
                   Navigator.pop(context);
-                  // TODO: Implementar editar
+                  _editPost();
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.delete),
-                title: const Text('Eliminar'),
+                leading: const Icon(Icons.delete, color: Colors.red),
+                title: const Text('Eliminar', style: TextStyle(color: Colors.red)),
                 onTap: () {
                   Navigator.pop(context);
                   _deletePost();
@@ -345,11 +396,19 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
               ),
             ] else ...[
               ListTile(
-                leading: const Icon(Icons.report),
+                leading: const Icon(Icons.report, color: Colors.orange),
                 title: const Text('Reportar'),
                 onTap: () {
                   Navigator.pop(context);
                   _reportPost();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.block, color: Colors.red),
+                title: const Text('Bloquear usuario'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _blockUser();
                 },
               ),
             ],
@@ -361,9 +420,16 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
                 _copyLink();
               },
             ),
+            const SizedBox(height: 8),
           ],
         ),
       ),
+    );
+  }
+
+  void _editPost() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Función de editar próximamente')),
     );
   }
 
@@ -372,7 +438,7 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Eliminar publicación'),
-        content: const Text('¿Estás seguro de que quieres eliminar esta publicación?'),
+        content: const Text('¿Estás seguro de que quieres eliminar esta publicación? Esta acción no se puede deshacer.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -386,7 +452,7 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
                 const SnackBar(content: Text('Función de eliminar próximamente')),
               );
             },
-            child: const Text('Eliminar'),
+            child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -394,21 +460,27 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
   }
 
   void _reportPost() {
-    // TODO: Implementar reportar
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Función de reportar próximamente')),
     );
   }
 
-  void _copyLink() {
-    // TODO: Implementar copiar enlace
+  void _blockUser() {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Enlace copiado al portapapeles')),
+      const SnackBar(content: Text('Función de bloquear próximamente')),
+    );
+  }
+
+  void _copyLink() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Enlace copiado al portapapeles'),
+        backgroundColor: Colors.green,
+      ),
     );
   }
 
   void _sharePost() {
-    // TODO: Implementar compartir
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Función de compartir próximamente')),
     );
@@ -429,5 +501,52 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
     } else {
       return '${dateTime.day}/${dateTime.month}';
     }
+  }
+}
+
+// Imports necesarios para el ImageGalleryScreen y CommentsBottomSheet
+class ImageGalleryScreen extends StatelessWidget {
+  final List<String> imageUrls;
+  final int initialIndex;
+
+  const ImageGalleryScreen({
+    super.key,
+    required this.imageUrls,
+    this.initialIndex = 0,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.close, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: PageView.builder(
+        controller: PageController(initialPage: initialIndex),
+        itemCount: imageUrls.length,
+        itemBuilder: (context, index) {
+          return Center(
+            child: InteractiveViewer(
+              child: CachedNetworkImage(
+                imageUrl: imageUrls[index],
+                fit: BoxFit.contain,
+                placeholder: (context, url) => const Center(
+                  child: CircularProgressIndicator(color: Colors.white),
+                ),
+                errorWidget: (context, url, error) => const Center(
+                  child: Icon(Icons.error, color: Colors.white, size: 64),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 }

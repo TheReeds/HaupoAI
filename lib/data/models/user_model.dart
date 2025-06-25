@@ -12,6 +12,13 @@ class UserModel {
   final bool isOnboardingCompleted;
   final Map<String, dynamic>? preferences;
 
+  // Nuevos campos para análisis
+  final String? currentFaceShape;
+  final double? faceAnalysisConfidence;
+  final DateTime? lastFaceAnalysis;
+  final String? bodyType;
+  final DateTime? lastBodyAnalysis;
+
   UserModel({
     required this.uid,
     required this.email,
@@ -21,6 +28,11 @@ class UserModel {
     this.lastLoginAt,
     this.isOnboardingCompleted = false,
     this.preferences,
+    this.currentFaceShape,
+    this.faceAnalysisConfidence,
+    this.lastFaceAnalysis,
+    this.bodyType,
+    this.lastBodyAnalysis,
   });
 
   // Crear desde Firebase User
@@ -55,6 +67,15 @@ class UserModel {
           : null,
       isOnboardingCompleted: data['isOnboardingCompleted'] ?? false,
       preferences: data['preferences'],
+      currentFaceShape: data['currentFaceShape'],
+      faceAnalysisConfidence: data['faceAnalysisConfidence']?.toDouble(),
+      lastFaceAnalysis: data['lastFaceAnalysis'] != null
+          ? (data['lastFaceAnalysis'] as Timestamp).toDate()
+          : null,
+      bodyType: data['bodyType'],
+      lastBodyAnalysis: data['lastBodyAnalysis'] != null
+          ? (data['lastBodyAnalysis'] as Timestamp).toDate()
+          : null,
     );
   }
 
@@ -70,6 +91,15 @@ class UserModel {
           : null,
       'isOnboardingCompleted': isOnboardingCompleted,
       'preferences': preferences,
+      'currentFaceShape': currentFaceShape,
+      'faceAnalysisConfidence': faceAnalysisConfidence,
+      'lastFaceAnalysis': lastFaceAnalysis != null
+          ? Timestamp.fromDate(lastFaceAnalysis!)
+          : null,
+      'bodyType': bodyType,
+      'lastBodyAnalysis': lastBodyAnalysis != null
+          ? Timestamp.fromDate(lastBodyAnalysis!)
+          : null,
     };
   }
 
@@ -80,6 +110,11 @@ class UserModel {
     DateTime? lastLoginAt,
     bool? isOnboardingCompleted,
     Map<String, dynamic>? preferences,
+    String? currentFaceShape,
+    double? faceAnalysisConfidence,
+    DateTime? lastFaceAnalysis,
+    String? bodyType,
+    DateTime? lastBodyAnalysis,
   }) {
     return UserModel(
       uid: uid,
@@ -90,36 +125,29 @@ class UserModel {
       lastLoginAt: lastLoginAt ?? this.lastLoginAt,
       isOnboardingCompleted: isOnboardingCompleted ?? this.isOnboardingCompleted,
       preferences: preferences ?? this.preferences,
-    );
-  }
-}
-
-// lib/data/models/auth_result.dart
-class AuthResult {
-  final bool isSuccess;
-  final UserModel? user;
-  final String? error;
-  final bool isNewUser;
-
-  AuthResult({
-    required this.isSuccess,
-    this.user,
-    this.error,
-    this.isNewUser = false,
-  });
-
-  factory AuthResult.success(UserModel user, {bool isNewUser = false}) {
-    return AuthResult(
-      isSuccess: true,
-      user: user,
-      isNewUser: isNewUser,
+      currentFaceShape: currentFaceShape ?? this.currentFaceShape,
+      faceAnalysisConfidence: faceAnalysisConfidence ?? this.faceAnalysisConfidence,
+      lastFaceAnalysis: lastFaceAnalysis ?? this.lastFaceAnalysis,
+      bodyType: bodyType ?? this.bodyType,
+      lastBodyAnalysis: lastBodyAnalysis ?? this.lastBodyAnalysis,
     );
   }
 
-  factory AuthResult.failure(String error) {
-    return AuthResult(
-      isSuccess: false,
-      error: error,
-    );
+  // Métodos de utilidad
+  bool get hasFaceAnalysis => currentFaceShape != null && currentFaceShape!.isNotEmpty;
+  bool get hasBodyAnalysis => bodyType != null && bodyType!.isNotEmpty;
+
+  bool get needsFaceAnalysisUpdate {
+    if (!hasFaceAnalysis) return true;
+    if (lastFaceAnalysis == null) return true;
+    // Sugerir actualización después de 30 días
+    return DateTime.now().difference(lastFaceAnalysis!).inDays > 30;
+  }
+
+  bool get needsBodyAnalysisUpdate {
+    if (!hasBodyAnalysis) return true;
+    if (lastBodyAnalysis == null) return true;
+    // Sugerir actualización después de 90 días
+    return DateTime.now().difference(lastBodyAnalysis!).inDays > 90;
   }
 }

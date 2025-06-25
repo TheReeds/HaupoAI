@@ -1,6 +1,7 @@
 // lib/data/repositories/auth_repository.dart
 import 'package:firebase_auth/firebase_auth.dart';
 import '../datasources/auth_datasource.dart';
+import '../models/auth_result.dart';
 import '../models/user_model.dart';
 
 class AuthRepository {

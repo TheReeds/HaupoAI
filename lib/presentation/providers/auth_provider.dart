@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/user_repository.dart';
 import '../../data/repositories/preference_repository.dart';
+import '../../data/repositories/social_repository.dart';
 import '../../data/models/user_model.dart';
 import '../../data/models/preference_model.dart';
 import 'dart:io';
@@ -20,6 +21,7 @@ class AuthProvider extends ChangeNotifier {
   final AuthRepository _authRepository;
   final UserRepository _userRepository;
   final PreferenceRepository _preferenceRepository;
+  final SocialRepository _socialRepository;
 
   AuthState _state = AuthState.initial;
   UserModel? _user;
@@ -31,9 +33,11 @@ class AuthProvider extends ChangeNotifier {
     AuthRepository? authRepository,
     UserRepository? userRepository,
     PreferenceRepository? preferenceRepository,
+    SocialRepository? socialRepository,
   }) : _authRepository = authRepository ?? AuthRepository(),
         _userRepository = userRepository ?? UserRepository(),
-        _preferenceRepository = preferenceRepository ?? PreferenceRepository() {
+        _preferenceRepository = preferenceRepository ?? PreferenceRepository(),
+        _socialRepository = socialRepository ?? SocialRepository() {
     _init();
   }
 
@@ -214,7 +218,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // Actualizar foto de perfil
+  // Actualizar foto de perfil (MEJORADO)
   Future<bool> updateProfilePhoto(File imageFile) async {
     if (_user == null) return false;
 
@@ -222,15 +226,27 @@ class AuthProvider extends ChangeNotifier {
     _clearError();
 
     try {
+      final oldPhotoURL = _user!.photoURL;
+
+      // 1. Actualizar en Firebase Auth y Firestore
       final updatedUser = await _userRepository.updateProfilePhoto(
         _user!.uid,
         imageFile,
       );
 
+      // 2. Actualizar todos los posts y comentarios existentes
+      await _socialRepository.updateUserDataInPosts(
+        _user!.uid,
+        null, // No cambiar el nombre
+        updatedUser.photoURL,
+      );
+
+      // 3. Actualizar usuario local
       _user = updatedUser;
       _setLoading(false);
       notifyListeners();
 
+      print('Foto de perfil actualizada: ${oldPhotoURL} -> ${updatedUser.photoURL}');
       return true;
     } catch (e) {
       _setError('Error al actualizar foto de perfil: ${e.toString()}');
@@ -238,7 +254,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // Actualizar nombre de usuario
+  // Actualizar nombre de usuario (MEJORADO)
   Future<bool> updateDisplayName(String displayName) async {
     if (_user == null) return false;
 
@@ -246,15 +262,27 @@ class AuthProvider extends ChangeNotifier {
     _clearError();
 
     try {
+      final oldDisplayName = _user!.displayName;
+
+      // 1. Actualizar en Firebase Auth y Firestore
       final updatedUser = await _userRepository.updateDisplayName(
         _user!.uid,
         displayName,
       );
 
+      // 2. Actualizar todos los posts y comentarios existentes
+      await _socialRepository.updateUserDataInPosts(
+        _user!.uid,
+        displayName,
+        null, // No cambiar la foto
+      );
+
+      // 3. Actualizar usuario local
       _user = updatedUser;
       _setLoading(false);
       notifyListeners();
 
+      print('Nombre actualizado: $oldDisplayName -> $displayName');
       return true;
     } catch (e) {
       _setError('Error al actualizar nombre: ${e.toString()}');

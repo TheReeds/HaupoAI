@@ -2,6 +2,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import '../models/post_model.dart';
+import '../models/user_model.dart';
 import 'dart:io';
 
 class SocialRepository {
@@ -48,17 +49,51 @@ class SocialRepository {
     }
   }
 
-  // Obtener feed de posts
+  // Obtener feed de posts con datos de usuario actualizados
   Stream<List<PostModel>> getPostsFeed({String? currentUserId, int limit = 20}) {
     return _firestore
         .collection('posts')
         .orderBy('createdAt', descending: true)
         .limit(limit)
         .snapshots()
-        .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => PostModel.fromFirestore(doc, currentUserId: currentUserId))
-          .toList();
+        .asyncMap((snapshot) async {
+
+      List<PostModel> posts = [];
+
+      for (var doc in snapshot.docs) {
+        try {
+          // Crear post básico desde Firestore
+          PostModel post = PostModel.fromFirestore(doc, currentUserId: currentUserId);
+
+          // Obtener datos actualizados del usuario
+          UserModel? userData = await _getUserData(post.userId);
+
+          if (userData != null) {
+            // Actualizar datos del usuario en el post
+            post = PostModel(
+              id: post.id,
+              userId: post.userId,
+              userName: userData.displayName ?? post.userName,
+              userPhotoURL: userData.photoURL,
+              description: post.description,
+              imageUrls: post.imageUrls,
+              tags: post.tags,
+              createdAt: post.createdAt,
+              likesCount: post.likesCount,
+              commentsCount: post.commentsCount,
+              isLikedByCurrentUser: post.isLikedByCurrentUser,
+            );
+          }
+
+          posts.add(post);
+        } catch (e) {
+          print('Error procesando post ${doc.id}: $e');
+          // Si hay error, agregar el post sin actualizar datos de usuario
+          posts.add(PostModel.fromFirestore(doc, currentUserId: currentUserId));
+        }
+      }
+
+      return posts;
     });
   }
 
@@ -69,11 +104,53 @@ class SocialRepository {
         .where('userId', isEqualTo: userId)
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => PostModel.fromFirestore(doc, currentUserId: currentUserId))
-          .toList();
+        .asyncMap((snapshot) async {
+
+      List<PostModel> posts = [];
+      UserModel? userData = await _getUserData(userId);
+
+      for (var doc in snapshot.docs) {
+        try {
+          PostModel post = PostModel.fromFirestore(doc, currentUserId: currentUserId);
+
+          if (userData != null) {
+            post = PostModel(
+              id: post.id,
+              userId: post.userId,
+              userName: userData.displayName ?? post.userName,
+              userPhotoURL: userData.photoURL,
+              description: post.description,
+              imageUrls: post.imageUrls,
+              tags: post.tags,
+              createdAt: post.createdAt,
+              likesCount: post.likesCount,
+              commentsCount: post.commentsCount,
+              isLikedByCurrentUser: post.isLikedByCurrentUser,
+            );
+          }
+
+          posts.add(post);
+        } catch (e) {
+          print('Error procesando post ${doc.id}: $e');
+          posts.add(PostModel.fromFirestore(doc, currentUserId: currentUserId));
+        }
+      }
+
+      return posts;
     });
+  }
+
+  // Método auxiliar para obtener datos del usuario
+  Future<UserModel?> _getUserData(String userId) async {
+    try {
+      final userDoc = await _firestore.collection('users').doc(userId).get();
+      if (userDoc.exists) {
+        return UserModel.fromFirestore(userDoc);
+      }
+    } catch (e) {
+      print('Error obteniendo datos de usuario $userId: $e');
+    }
+    return null;
   }
 
   // Dar/quitar like a un post
@@ -98,7 +175,7 @@ class SocialRepository {
 
   // ============ COMENTARIOS ============
 
-  // Agregar comentario
+  // Agregar comentario con datos actualizados del usuario
   Future<void> addComment({
     required String postId,
     required String userId,
@@ -106,12 +183,16 @@ class SocialRepository {
     String? userPhotoURL,
     required String content,
   }) async {
+
+    // Obtener datos actualizados del usuario
+    UserModel? userData = await _getUserData(userId);
+
     final comment = CommentModel(
       id: '',
       postId: postId,
       userId: userId,
-      userName: userName,
-      userPhotoURL: userPhotoURL,
+      userName: userData?.displayName ?? userName,
+      userPhotoURL: userData?.photoURL ?? userPhotoURL,
       content: content,
       createdAt: DateTime.now(),
     );
@@ -129,15 +210,44 @@ class SocialRepository {
     });
   }
 
-  // Obtener comentarios de un post
+  // Obtener comentarios de un post con datos actualizados
   Stream<List<CommentModel>> getPostComments(String postId) {
     return _firestore
         .collection('comments')
         .where('postId', isEqualTo: postId)
         .orderBy('createdAt', descending: false)
         .snapshots()
-        .map((snapshot) {
-      return snapshot.docs.map((doc) => CommentModel.fromFirestore(doc)).toList();
+        .asyncMap((snapshot) async {
+
+      List<CommentModel> comments = [];
+
+      for (var doc in snapshot.docs) {
+        try {
+          CommentModel comment = CommentModel.fromFirestore(doc);
+
+          // Obtener datos actualizados del usuario
+          UserModel? userData = await _getUserData(comment.userId);
+
+          if (userData != null) {
+            comment = CommentModel(
+              id: comment.id,
+              postId: comment.postId,
+              userId: comment.userId,
+              userName: userData.displayName ?? comment.userName,
+              userPhotoURL: userData.photoURL,
+              content: comment.content,
+              createdAt: comment.createdAt,
+            );
+          }
+
+          comments.add(comment);
+        } catch (e) {
+          print('Error procesando comentario ${doc.id}: $e');
+          comments.add(CommentModel.fromFirestore(doc));
+        }
+      }
+
+      return comments;
     });
   }
 
@@ -172,35 +282,150 @@ class SocialRepository {
 
   // ============ BÚSQUEDA ============
 
-  // Buscar posts por tags
+  // Buscar posts por tags con datos actualizados
   Future<List<PostModel>> searchPostsByTags(List<String> tags, {String? currentUserId}) async {
-    final snapshot = await _firestore
-        .collection('posts')
-        .where('tags', arrayContainsAny: tags)
+    Query query = _firestore.collection('posts');
+
+    if (tags.isNotEmpty) {
+      query = query.where('tags', arrayContainsAny: tags);
+    }
+
+    final snapshot = await query
         .orderBy('createdAt', descending: true)
         .limit(20)
         .get();
 
-    return snapshot.docs
-        .map((doc) => PostModel.fromFirestore(doc, currentUserId: currentUserId))
-        .toList();
+    List<PostModel> posts = [];
+
+    for (var doc in snapshot.docs) {
+      try {
+        PostModel post = PostModel.fromFirestore(doc, currentUserId: currentUserId);
+
+        // Obtener datos actualizados del usuario
+        UserModel? userData = await _getUserData(post.userId);
+
+        if (userData != null) {
+          post = PostModel(
+            id: post.id,
+            userId: post.userId,
+            userName: userData.displayName ?? post.userName,
+            userPhotoURL: userData.photoURL,
+            description: post.description,
+            imageUrls: post.imageUrls,
+            tags: post.tags,
+            createdAt: post.createdAt,
+            likesCount: post.likesCount,
+            commentsCount: post.commentsCount,
+            isLikedByCurrentUser: post.isLikedByCurrentUser,
+          );
+        }
+
+        posts.add(post);
+      } catch (e) {
+        print('Error procesando post ${doc.id}: $e');
+        posts.add(PostModel.fromFirestore(doc, currentUserId: currentUserId));
+      }
+    }
+
+    return posts;
   }
 
   // Buscar posts por descripción
   Future<List<PostModel>> searchPostsByDescription(String searchTerm, {String? currentUserId}) async {
-    // Nota: Firestore no tiene búsqueda de texto completo nativa
-    // Para una implementación completa, considera usar Algolia o ElasticSearch
+    // Para búsqueda de texto completo, considera usar Algolia o similar en producción
     final snapshot = await _firestore
         .collection('posts')
         .orderBy('createdAt', descending: true)
         .limit(50)
         .get();
 
-    final posts = snapshot.docs
-        .map((doc) => PostModel.fromFirestore(doc, currentUserId: currentUserId))
-        .where((post) => post.description.toLowerCase().contains(searchTerm.toLowerCase()))
-        .toList();
+    List<PostModel> posts = [];
+
+    for (var doc in snapshot.docs) {
+      try {
+        PostModel post = PostModel.fromFirestore(doc, currentUserId: currentUserId);
+
+        if (post.description.toLowerCase().contains(searchTerm.toLowerCase())) {
+          // Obtener datos actualizados del usuario
+          UserModel? userData = await _getUserData(post.userId);
+
+          if (userData != null) {
+            post = PostModel(
+              id: post.id,
+              userId: post.userId,
+              userName: userData.displayName ?? post.userName,
+              userPhotoURL: userData.photoURL,
+              description: post.description,
+              imageUrls: post.imageUrls,
+              tags: post.tags,
+              createdAt: post.createdAt,
+              likesCount: post.likesCount,
+              commentsCount: post.commentsCount,
+              isLikedByCurrentUser: post.isLikedByCurrentUser,
+            );
+          }
+
+          posts.add(post);
+        }
+      } catch (e) {
+        print('Error procesando post ${doc.id}: $e');
+      }
+    }
 
     return posts;
+  }
+
+  // Actualizar todos los posts de un usuario cuando cambia su perfil
+  Future<void> updateUserDataInPosts(String userId, String? newDisplayName, String? newPhotoURL) async {
+    try {
+      final batch = _firestore.batch();
+
+      // Obtener todos los posts del usuario
+      final postsSnapshot = await _firestore
+          .collection('posts')
+          .where('userId', isEqualTo: userId)
+          .get();
+
+      // Actualizar cada post
+      for (var doc in postsSnapshot.docs) {
+        final updateData = <String, dynamic>{};
+        if (newDisplayName != null) {
+          updateData['userName'] = newDisplayName;
+        }
+        if (newPhotoURL != null) {
+          updateData['userPhotoURL'] = newPhotoURL;
+        }
+
+        if (updateData.isNotEmpty) {
+          batch.update(doc.reference, updateData);
+        }
+      }
+
+      // Obtener todos los comentarios del usuario
+      final commentsSnapshot = await _firestore
+          .collection('comments')
+          .where('userId', isEqualTo: userId)
+          .get();
+
+      // Actualizar cada comentario
+      for (var doc in commentsSnapshot.docs) {
+        final updateData = <String, dynamic>{};
+        if (newDisplayName != null) {
+          updateData['userName'] = newDisplayName;
+        }
+        if (newPhotoURL != null) {
+          updateData['userPhotoURL'] = newPhotoURL;
+        }
+
+        if (updateData.isNotEmpty) {
+          batch.update(doc.reference, updateData);
+        }
+      }
+
+      await batch.commit();
+      print('Datos de usuario actualizados en posts y comentarios');
+    } catch (e) {
+      print('Error actualizando datos de usuario: $e');
+    }
   }
 }
