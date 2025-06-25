@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "547065230418",
+    "project_id": "huapoaiapp",
+    "storage_bucket": "huapoaiapp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:547065230418:android:ef3468a8165b0b53f69b8b",
+        "android_client_info": {
+          "package_name": "com.huapoai.huapoai"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "547065230418-2mjuamu27crmeese9jbucphv71emo78j.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.huapoai.huapoai",
+            "certificate_hash": "aacab4214d52125fe90ae43252a7cccc430f6978"
+          }
+        },
+        {
+          "client_id": "547065230418-60ht9vjal3hq57cv2kcevvgsr4nsonob.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBC7SwkXACJGgJwckoq_kKfu4nM1ihuJwg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "547065230418-60ht9vjal3hq57cv2kcevvgsr4nsonob.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
