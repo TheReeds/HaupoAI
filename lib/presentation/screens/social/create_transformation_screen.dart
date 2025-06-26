@@ -112,7 +112,7 @@ class _CreateTransformationScreenState extends State<CreateTransformationScreen>
         title: const Text('Crear Transformación'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
+          onPressed: () => context.go('/transformations'),
         ),
         actions: [
           if (_beforeImage != null && _afterImage != null)

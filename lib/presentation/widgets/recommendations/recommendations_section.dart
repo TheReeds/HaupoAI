@@ -328,36 +328,61 @@ class _RecommendationsSectionState extends State<RecommendationsSection> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
+    // Colores neon personalizados
+    Color neonColor;
+    List<BoxShadow> neonShadow;
+    if (label == 'Rostro') {
+      neonColor = const Color(0xFF00FFFF); // Azul neon
+      neonShadow = [
+        BoxShadow(color: neonColor.withOpacity(0.5), blurRadius: 6, spreadRadius: 0.5),
+      ];
+    } else if (label == 'Cabello') {
+      neonColor = const Color(0xFFFF1744); // Rojo neon
+      neonShadow = [
+        BoxShadow(color: neonColor.withOpacity(0.5), blurRadius: 6, spreadRadius: 0.5),
+      ];
+    } else if (label == 'Cuerpo') {
+      neonColor = const Color(0xFFFF9100); // Naranja neon
+      neonShadow = [
+        BoxShadow(color: neonColor.withOpacity(0.5), blurRadius: 6, spreadRadius: 0.5),
+      ];
+    } else {
+      neonColor = colorScheme.primary;
+      neonShadow = [];
+    }
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: completed
-            ? colorScheme.primaryContainer
-            : colorScheme.surfaceVariant,
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: completed
-              ? colorScheme.primary
-              : colorScheme.outline.withOpacity(0.3),
+          color: neonColor,
+          width: 2,
         ),
+        boxShadow: neonShadow,
       ),
       child: Column(
         children: [
-          Icon(
-            completed ? Icons.check_circle : icon,
-            color: completed
-                ? colorScheme.primary
-                : colorScheme.onSurfaceVariant,
-            size: 20,
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: neonColor,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              completed ? Icons.check_circle : icon,
+              color: Colors.white,
+              size: 18,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
             label,
             style: theme.textTheme.bodySmall?.copyWith(
-              color: completed
-                  ? colorScheme.onPrimaryContainer
-                  : colorScheme.onSurfaceVariant,
-              fontWeight: completed ? FontWeight.w600 : null,
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],

@@ -136,112 +136,100 @@ class _ImprovedHomeScreenState extends State<HomeScreen>
   Widget _buildModernAppBar(BuildContext context, AuthProvider authProvider) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final double statusBarHeight = MediaQuery.of(context).padding.top;
 
     return SliverAppBar(
-      expandedHeight: 160,
+      toolbarHeight: 56 + statusBarHeight,
       floating: false,
       pinned: true,
       elevation: 0,
       backgroundColor: colorScheme.surface,
       surfaceTintColor: Colors.transparent,
-      flexibleSpace: FlexibleSpaceBar(
-        background: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                colorScheme.primaryContainer.withOpacity(0.8),
-                colorScheme.tertiaryContainer.withOpacity(0.6),
-                colorScheme.surface,
-              ],
+      flexibleSpace: Container(
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: statusBarHeight,
+          bottom: 0,
+        ),
+        alignment: Alignment.center,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Logo
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: colorScheme.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.auto_awesome_rounded,
+                color: colorScheme.primary,
+                size: 20,
+              ),
             ),
-          ),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
+            const SizedBox(width: 10),
+            // Nombre y descripción
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.end,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Row(
-                    children: [
-                      // Logo y título
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: colorScheme.primary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Icon(
-                          Icons.auto_awesome_rounded,
-                          color: colorScheme.primary,
-                          size: 28,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'HuapoAI',
-                              style: theme.textTheme.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.w800,
-                                color: colorScheme.primary,
-                              ),
-                            ),
-                            Text(
-                              'Tu asistente de estilo personal',
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: colorScheme.onSurface.withOpacity(0.7),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                  Text(
+                    'HuapoAI',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: colorScheme.primary,
+                      fontSize: 16,
+                    ),
+                  ),
+                  Text(
+                    'Tu asistente de estilo personal',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurface.withOpacity(0.7),
+                      fontSize: 11,
+                    ),
                   ),
                 ],
               ),
             ),
-          ),
+            // Icono de notificaciones
+            Container(
+              margin: const EdgeInsets.only(right: 4, left: 4),
+              child: Stack(
+                children: [
+                  IconButton(
+                    icon: Icon(
+                      Icons.notifications_none_rounded,
+                      color: colorScheme.onSurface,
+                      size: 22,
+                    ),
+                    onPressed: () {},
+                  ),
+                  Positioned(
+                    right: 8,
+                    top: 8,
+                    child: Container(
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                        color: colorScheme.error,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Perfil
+            Container(
+              margin: const EdgeInsets.only(right: 0),
+              child: _buildProfileButton(context, authProvider),
+            ),
+          ],
         ),
       ),
-      actions: [
-        // Notificaciones
-        Container(
-          margin: const EdgeInsets.only(right: 8),
-          child: Stack(
-            children: [
-              IconButton(
-                icon: Icon(
-                  Icons.notifications_none_rounded,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-                onPressed: () {},
-              ),
-              Positioned(
-                right: 8,
-                top: 8,
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.error,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        // Perfil
-        Container(
-          margin: const EdgeInsets.only(right: 16),
-          child: _buildProfileButton(context, authProvider),
-        ),
-      ],
     );
   }
 
@@ -457,33 +445,62 @@ class _ImprovedHomeScreenState extends State<HomeScreen>
       ) {
     final theme = Theme.of(context);
 
+    // Colores neon personalizados
+    Color neonColor;
+    List<BoxShadow> neonShadow;
+    if (title == 'Rostro') {
+      neonColor = const Color(0xFF00FFFF); // Azul neon
+      neonShadow = [
+        BoxShadow(color: neonColor.withOpacity(0.5), blurRadius: 6, spreadRadius: 0.5),
+      ];
+    } else if (title == 'Cuerpo') {
+      neonColor = const Color(0xFFFF9100); // Naranja neon
+      neonShadow = [
+        BoxShadow(color: neonColor.withOpacity(0.5), blurRadius: 6, spreadRadius: 0.5),
+      ];
+    } else {
+      neonColor = color;
+      neonShadow = [];
+    }
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: Colors.transparent,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: color.withOpacity(0.3),
-            width: 1,
+            color: neonColor,
+            width: 2,
           ),
+          boxShadow: neonShadow,
         ),
         child: Column(
           children: [
-            Icon(icon, color: color, size: 24),
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: neonColor,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: Colors.white, size: 24),
+            ),
             const SizedBox(height: 8),
             Text(
               title,
               style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: color,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+                letterSpacing: 1.2,
               ),
             ),
             Text(
               status,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: color.withOpacity(0.8),
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
