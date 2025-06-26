@@ -7,16 +7,111 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../errors/exceptions.dart';
 import '../../data/models/face_analysis_model.dart';
+import '../../data/models/hair_analysis_model.dart';
 
 class RoboflowService {
   static const String _baseUrl = 'https://serverless.roboflow.com';
   static const String _apiKey = 'kzEso6BdqfaNpl9MxyZn';
   static const String _faceShapeModel = 'face-shape-n9tfv/3';
+  static const String _hairDetectionModel = 'hair-pddt2/1';
 
   final FirebaseStorage _storage = FirebaseStorage.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // Analizar forma del rostro desde archivo
+  // Analizar tanto forma del rostro como tipo de cabello desde archivo
+  Future<Map<String, dynamic>> analyzeCompleteProfile({
+    required String userId,
+    required File imageFile,
+  }) async {
+    try {
+      // Verificar autenticación
+      if (_auth.currentUser == null || _auth.currentUser!.uid != userId) {
+        throw AppException('Usuario no autenticado o UID incorrecto');
+      }
+
+      // 1. Subir imagen temporal a Firebase Storage
+      final tempImageUrl = await _uploadTempImage(userId, imageFile);
+
+      // 2. Ejecutar ambos análisis en paralelo
+      final results = await Future.wait([
+        _callRoboflowAPI(model: _faceShapeModel, imageFile: imageFile),
+        _callRoboflowAPI(model: _hairDetectionModel, imageFile: imageFile),
+      ]);
+
+      final faceResult = results[0];
+      final hairResult = results[1];
+
+      // 3. Crear modelos de análisis
+      final faceAnalysis = FaceAnalysisModel.fromRoboflowResponse(
+        userId: userId,
+        response: faceResult,
+        imageUrl: tempImageUrl,
+      );
+
+      final hairAnalysis = HairAnalysisModel.fromRoboflowResponse(
+        userId: userId,
+        response: hairResult,
+        imageUrl: tempImageUrl,
+      );
+
+      return {
+        'faceAnalysis': faceAnalysis,
+        'hairAnalysis': hairAnalysis,
+        'imageUrl': tempImageUrl,
+      };
+
+    } catch (e) {
+      print('Error en analyzeCompleteProfile: $e');
+      throw AppException('Error en análisis completo: ${e.toString()}');
+    }
+  }
+
+  // Analizar desde URL
+  Future<Map<String, dynamic>> analyzeCompleteProfileFromUrl({
+    required String userId,
+    required String imageUrl,
+  }) async {
+    try {
+      // Verificar autenticación
+      if (_auth.currentUser == null || _auth.currentUser!.uid != userId) {
+        throw AppException('Usuario no autenticado o UID incorrecto');
+      }
+
+      // 1. Ejecutar ambos análisis en paralelo
+      final results = await Future.wait([
+        _callRoboflowAPIFromUrl(model: _faceShapeModel, imageUrl: imageUrl),
+        _callRoboflowAPIFromUrl(model: _hairDetectionModel, imageUrl: imageUrl),
+      ]);
+
+      final faceResult = results[0];
+      final hairResult = results[1];
+
+      // 2. Crear modelos de análisis
+      final faceAnalysis = FaceAnalysisModel.fromRoboflowResponse(
+        userId: userId,
+        response: faceResult,
+        imageUrl: imageUrl,
+      );
+
+      final hairAnalysis = HairAnalysisModel.fromRoboflowResponse(
+        userId: userId,
+        response: hairResult,
+        imageUrl: imageUrl,
+      );
+
+      return {
+        'faceAnalysis': faceAnalysis,
+        'hairAnalysis': hairAnalysis,
+        'imageUrl': imageUrl,
+      };
+
+    } catch (e) {
+      print('Error en analyzeCompleteProfileFromUrl: $e');
+      throw AppException('Error en análisis completo: ${e.toString()}');
+    }
+  }
+
+  // Métodos legacy para compatibilidad (solo análisis facial)
   Future<FaceAnalysisModel> analyzeFaceShape({
     required String userId,
     required File imageFile,
@@ -46,12 +141,11 @@ class RoboflowService {
       return faceAnalysis;
 
     } catch (e) {
-      print('Error en analyzeFaceShape: $e'); // Para debugging
+      print('Error en analyzeFaceShape: $e');
       throw AppException('Error en análisis facial: ${e.toString()}');
     }
   }
 
-  // Analizar forma del rostro desde URL
   Future<FaceAnalysisModel> analyzeFaceShapeFromUrl({
     required String userId,
     required String imageUrl,
@@ -78,7 +172,7 @@ class RoboflowService {
       return faceAnalysis;
 
     } catch (e) {
-      print('Error en analyzeFaceShapeFromUrl: $e'); // Para debugging
+      print('Error en analyzeFaceShapeFromUrl: $e');
       throw AppException('Error en análisis facial: ${e.toString()}');
     }
   }
@@ -103,21 +197,21 @@ class RoboflowService {
         body: base64Image,
       );
 
-      print('Roboflow API Response Status: ${response.statusCode}'); // Debug
-      print('Roboflow API Response Body: ${response.body}'); // Debug
+      print('Roboflow API Response Status ($model): ${response.statusCode}');
+      print('Roboflow API Response Body ($model): ${response.body}');
 
       if (response.statusCode == 200) {
         final result = json.decode(response.body);
-        _validateRoboflowResponse(result);
+        _validateRoboflowResponse(result, model);
         return result;
       } else {
         throw AppException(
-          'Error en API de Roboflow: ${response.statusCode} - ${response.body}',
+          'Error en API de Roboflow ($model): ${response.statusCode} - ${response.body}',
         );
       }
     } catch (e) {
       if (e is AppException) rethrow;
-      throw AppException('Error de conexión con Roboflow: ${e.toString()}');
+      throw AppException('Error de conexión con Roboflow ($model): ${e.toString()}');
     }
   }
 
@@ -148,16 +242,16 @@ class RoboflowService {
 
       if (response.statusCode == 200) {
         final result = json.decode(response.body);
-        _validateRoboflowResponse(result);
+        _validateRoboflowResponse(result, model);
         return result;
       } else {
         throw AppException(
-          'Error en API de Roboflow: ${response.statusCode} - ${response.body}',
+          'Error en API de Roboflow ($model): ${response.statusCode} - ${response.body}',
         );
       }
     } catch (e) {
       if (e is AppException) rethrow;
-      throw AppException('Error de conexión con Roboflow: ${e.toString()}');
+      throw AppException('Error de conexión con Roboflow ($model): ${e.toString()}');
     }
   }
 
@@ -170,7 +264,7 @@ class RoboflowService {
       final extension = imageFile.path.split('.').last.toLowerCase();
       final fileName = '${userId}_analysis_$timestamp.$extension';
 
-      print('Uploading to: analysis/$userId/$fileName'); // Debug
+      print('Uploading to: analysis/$userId/$fileName');
 
       final ref = _storage.ref().child('analysis/$userId/$fileName');
 
@@ -178,7 +272,7 @@ class RoboflowService {
       final metadata = SettableMetadata(
         contentType: _getContentType(extension),
         customMetadata: {
-          'purpose': 'face_analysis',
+          'purpose': 'complete_analysis',
           'timestamp': timestamp.toString(),
         },
       );
@@ -186,11 +280,11 @@ class RoboflowService {
       final uploadTask = await ref.putFile(imageFile, metadata);
       final downloadUrl = await uploadTask.ref.getDownloadURL();
 
-      print('Upload successful. URL: $downloadUrl'); // Debug
+      print('Upload successful. URL: $downloadUrl');
 
       return downloadUrl;
     } catch (e) {
-      print('Error uploading image: $e'); // Debug
+      print('Error uploading image: $e');
       throw AppException('Error subiendo imagen: ${e.toString()}');
     }
   }
@@ -213,8 +307,8 @@ class RoboflowService {
   }
 
   // Validar respuesta de Roboflow
-  void _validateRoboflowResponse(Map<String, dynamic> response) {
-    print('Validating Roboflow response: $response'); // Debug
+  void _validateRoboflowResponse(Map<String, dynamic> response, String model) {
+    print('Validating Roboflow response for $model: $response');
 
     if (!response.containsKey('predictions')) {
       throw AppException('Respuesta inválida de Roboflow: falta campo predictions');
@@ -222,7 +316,13 @@ class RoboflowService {
 
     final predictions = response['predictions'] as List;
     if (predictions.isEmpty) {
-      throw AppException('No se detectó ningún rostro en la imagen');
+      if (model.contains('face-shape')) {
+        throw AppException('No se detectó ningún rostro en la imagen');
+      } else if (model.contains('hair')) {
+        throw AppException('No se detectó cabello en la imagen');
+      } else {
+        throw AppException('No se detectó contenido relevante en la imagen');
+      }
     }
 
     final prediction = predictions[0];
@@ -328,6 +428,80 @@ class RoboflowService {
         ],
         'celebrities': ['Sarah Jessica Parker', 'Liv Tyler', 'Gisele Bündchen'],
         'color': Color(0xFFFF9800),
+      },
+    };
+  }
+
+  // Obtener información sobre tipos de cabello
+  static Map<String, Map<String, dynamic>> getHairTypeInfo() {
+    return {
+      'straight': {
+        'name': 'Liso',
+        'description': 'Cabello naturalmente recto y suave',
+        'characteristics': [
+          'Textura lisa y uniforme',
+          'Tendencia a verse grasoso rápidamente',
+          'Difícil de mantener ondas',
+          'Brillo natural'
+        ],
+        'care_tips': [
+          'Usa champús sin sulfatos',
+          'Evita productos muy pesados',
+          'Lava cada 2-3 días',
+          'Usa protector térmico'
+        ],
+        'color': Color(0xFF4FC3F7),
+      },
+      'wavy': {
+        'name': 'Ondulado',
+        'description': 'Cabello con ondas naturales suaves',
+        'characteristics': [
+          'Patrón de ondas en forma de S',
+          'Textura media',
+          'Tendencia al frizz',
+          'Volumen natural'
+        ],
+        'care_tips': [
+          'Usa productos para definir ondas',
+          'Evita cepillar en seco',
+          'Usa difusor al secar',
+          'Aplica mascarillas hidratantes'
+        ],
+        'color': Color(0xFF81C784),
+      },
+      'curly': {
+        'name': 'Rizado',
+        'description': 'Cabello con rizos definidos y volumen',
+        'characteristics': [
+          'Rizos en forma de espiral',
+          'Textura gruesa',
+          'Tendencia a la sequedad',
+          'Mucho volumen natural'
+        ],
+        'care_tips': [
+          'Hidrata intensivamente',
+          'Usa técnica de plopping',
+          'No uses champú diario',
+          'Aplica leave-in cream'
+        ],
+        'color': Color(0xFFAB47BC),
+      },
+      'coily': {
+        'name': 'Crespo',
+        'description': 'Cabello con textura muy rizada y densa',
+        'characteristics': [
+          'Patrón de rizos muy cerrados',
+          'Textura densa y fuerte',
+          'Muy propenso a la sequedad',
+          'Frágil cuando está húmedo'
+        ],
+        'care_tips': [
+          'Hidratación profunda semanal',
+          'Usa productos sin sulfatos ni siliconas',
+          'Protege mientras duermes',
+          'Desenreda solo con acondicionador'
+        ],
+        'color': Color(0xFFFF7043),
       },
     };
   }

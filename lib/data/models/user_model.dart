@@ -12,10 +12,17 @@ class UserModel {
   final bool isOnboardingCompleted;
   final Map<String, dynamic>? preferences;
 
-  // Nuevos campos para análisis
+  // Campos para análisis facial
   final String? currentFaceShape;
   final double? faceAnalysisConfidence;
   final DateTime? lastFaceAnalysis;
+
+  // Campos para análisis de cabello
+  final String? currentHairType;
+  final double? hairAnalysisConfidence;
+  final DateTime? lastHairAnalysis;
+
+  // Campos para análisis corporal
   final String? bodyType;
   final DateTime? lastBodyAnalysis;
 
@@ -31,6 +38,9 @@ class UserModel {
     this.currentFaceShape,
     this.faceAnalysisConfidence,
     this.lastFaceAnalysis,
+    this.currentHairType,
+    this.hairAnalysisConfidence,
+    this.lastHairAnalysis,
     this.bodyType,
     this.lastBodyAnalysis,
   });
@@ -72,6 +82,11 @@ class UserModel {
       lastFaceAnalysis: data['lastFaceAnalysis'] != null
           ? (data['lastFaceAnalysis'] as Timestamp).toDate()
           : null,
+      currentHairType: data['currentHairType'],
+      hairAnalysisConfidence: data['hairAnalysisConfidence']?.toDouble(),
+      lastHairAnalysis: data['lastHairAnalysis'] != null
+          ? (data['lastHairAnalysis'] as Timestamp).toDate()
+          : null,
       bodyType: data['bodyType'],
       lastBodyAnalysis: data['lastBodyAnalysis'] != null
           ? (data['lastBodyAnalysis'] as Timestamp).toDate()
@@ -96,6 +111,11 @@ class UserModel {
       'lastFaceAnalysis': lastFaceAnalysis != null
           ? Timestamp.fromDate(lastFaceAnalysis!)
           : null,
+      'currentHairType': currentHairType,
+      'hairAnalysisConfidence': hairAnalysisConfidence,
+      'lastHairAnalysis': lastHairAnalysis != null
+          ? Timestamp.fromDate(lastHairAnalysis!)
+          : null,
       'bodyType': bodyType,
       'lastBodyAnalysis': lastBodyAnalysis != null
           ? Timestamp.fromDate(lastBodyAnalysis!)
@@ -113,6 +133,9 @@ class UserModel {
     String? currentFaceShape,
     double? faceAnalysisConfidence,
     DateTime? lastFaceAnalysis,
+    String? currentHairType,
+    double? hairAnalysisConfidence,
+    DateTime? lastHairAnalysis,
     String? bodyType,
     DateTime? lastBodyAnalysis,
   }) {
@@ -128,6 +151,9 @@ class UserModel {
       currentFaceShape: currentFaceShape ?? this.currentFaceShape,
       faceAnalysisConfidence: faceAnalysisConfidence ?? this.faceAnalysisConfidence,
       lastFaceAnalysis: lastFaceAnalysis ?? this.lastFaceAnalysis,
+      currentHairType: currentHairType ?? this.currentHairType,
+      hairAnalysisConfidence: hairAnalysisConfidence ?? this.hairAnalysisConfidence,
+      lastHairAnalysis: lastHairAnalysis ?? this.lastHairAnalysis,
       bodyType: bodyType ?? this.bodyType,
       lastBodyAnalysis: lastBodyAnalysis ?? this.lastBodyAnalysis,
     );
@@ -135,7 +161,9 @@ class UserModel {
 
   // Métodos de utilidad
   bool get hasFaceAnalysis => currentFaceShape != null && currentFaceShape!.isNotEmpty;
+  bool get hasHairAnalysis => currentHairType != null && currentHairType!.isNotEmpty;
   bool get hasBodyAnalysis => bodyType != null && bodyType!.isNotEmpty;
+  bool get hasCompleteAnalysis => hasFaceAnalysis && hasHairAnalysis;
 
   bool get needsFaceAnalysisUpdate {
     if (!hasFaceAnalysis) return true;
@@ -144,10 +172,52 @@ class UserModel {
     return DateTime.now().difference(lastFaceAnalysis!).inDays > 30;
   }
 
+  bool get needsHairAnalysisUpdate {
+    if (!hasHairAnalysis) return true;
+    if (lastHairAnalysis == null) return true;
+    // Sugerir actualización después de 60 días (el cabello cambia más lento)
+    return DateTime.now().difference(lastHairAnalysis!).inDays > 60;
+  }
+
   bool get needsBodyAnalysisUpdate {
     if (!hasBodyAnalysis) return true;
     if (lastBodyAnalysis == null) return true;
     // Sugerir actualización después de 90 días
     return DateTime.now().difference(lastBodyAnalysis!).inDays > 90;
+  }
+
+  // Obtener porcentaje de perfil completo
+  double get profileCompletenessPercentage {
+    double completion = 0.0;
+
+    // Información básica (30%)
+    if (displayName != null && displayName!.isNotEmpty) completion += 0.1;
+    if (photoURL != null && photoURL!.isNotEmpty) completion += 0.1;
+    if (isOnboardingCompleted) completion += 0.1;
+
+    // Análisis facial (35%)
+    if (hasFaceAnalysis) completion += 0.35;
+
+    // Análisis de cabello (25%)
+    if (hasHairAnalysis) completion += 0.25;
+
+    // Análisis corporal (10%)
+    if (hasBodyAnalysis) completion += 0.1;
+
+    return completion;
+  }
+
+  // Obtener siguiente paso recomendado
+  String get nextRecommendedStep {
+    if (!isOnboardingCompleted) return 'Completar configuración inicial';
+    if (displayName == null || displayName!.isEmpty) return 'Agregar nombre de usuario';
+    if (photoURL == null || photoURL!.isEmpty) return 'Subir foto de perfil';
+    if (!hasFaceAnalysis) return 'Realizar análisis facial';
+    if (!hasHairAnalysis) return 'Realizar análisis de cabello';
+    if (!hasBodyAnalysis) return 'Realizar análisis corporal';
+    if (needsFaceAnalysisUpdate) return 'Actualizar análisis facial';
+    if (needsHairAnalysisUpdate) return 'Actualizar análisis de cabello';
+    if (needsBodyAnalysisUpdate) return 'Actualizar análisis corporal';
+    return 'Perfil completo';
   }
 }
