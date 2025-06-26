@@ -7,7 +7,7 @@ import '../errors/exceptions.dart';
 
 class ChatbotService {
   static const String _baseUrl = 'https://router.huggingface.co/hyperbolic/v1/chat/completions';
-  static const String _apiKey = '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';
+  static const String _apiKey = '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';
 
   // Modelo gratuito/económico recomendado
   static const String _model = 'meta-llama/Llama-3.3-70B-Instruct';
