@@ -391,10 +391,14 @@ class _BodyAnalysisScreenState extends State<BodyAnalysisScreen>
                         color: Colors.green,
                       ),
                       const SizedBox(width: 8),
-                      Text(
-                        'Recomendaciones de Vestimenta',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
+                      Expanded(
+                        child: Text(
+                          'Recomendaciones de Vestimenta',
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
                         ),
                       ),
                     ],
