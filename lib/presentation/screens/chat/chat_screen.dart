@@ -209,6 +209,10 @@ class _ChatScreenState extends State<ChatScreen> {
       return Scaffold(
         appBar: AppBar(
           title: const Text('HuapoAI Assistant'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => context.go('/home'),
+          ),
         ),
         body: const Center(
           child: Column(
@@ -256,6 +260,10 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ),
           ],
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/home'),
         ),
         actions: [
           PopupMenuButton<String>(
