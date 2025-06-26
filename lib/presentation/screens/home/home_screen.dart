@@ -8,6 +8,7 @@ import '../../../data/repositories/chat_repository.dart';
 import '../../../data/repositories/social_repository.dart';
 import '../../../data/models/transformation_post_model.dart';
 import '../../../data/models/post_model.dart';
+import '../../widgets/recommendations/recommendations_section.dart';
 import '../../widgets/social/transformation_card.dart';
 import '../../widgets/social/mini_post_card.dart';
 
@@ -94,6 +95,10 @@ class _ImprovedHomeScreenState extends State<HomeScreen>
                         children: [
                           // Sección de Bienvenida Personalizada
                           _buildPersonalizedWelcome(context, authProvider),
+
+
+                          // NUEVA SECCIÓN: Recomendaciones Personalizadas
+                          const RecommendationsSection(),
 
                           // Chat Bot Access
                           _buildChatBotAccess(context, authProvider),
@@ -250,6 +255,9 @@ class _ImprovedHomeScreenState extends State<HomeScreen>
           case 'preferences':
             context.go('/edit-preferences');
             break;
+          case 'recommendations':
+            context.go('/personalized-recommendations');
+            break;
           case 'logout':
             _showLogoutDialog(context, authProvider);
             break;
@@ -261,6 +269,14 @@ class _ImprovedHomeScreenState extends State<HomeScreen>
           child: ListTile(
             leading: const Icon(Icons.person_outline_rounded),
             title: const Text('Mi Perfil'),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+        PopupMenuItem(
+          value: 'recommendations',
+          child: ListTile(
+            leading: const Icon(Icons.auto_awesome_rounded),
+            title: const Text('Mis Recomendaciones'),
             contentPadding: EdgeInsets.zero,
           ),
         ),
