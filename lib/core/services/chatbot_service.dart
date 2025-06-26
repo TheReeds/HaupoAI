@@ -1,19 +1,23 @@
-// lib/core/services/chatbot_service.dart
+// lib/core/services/chatbot_service.dart (ACTUALIZADO)
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../data/models/user_model.dart';
 import '../../data/models/preference_model.dart';
+import '../../data/models/face_analysis_model.dart';
+import '../../data/models/hair_analysis_model.dart';
 import '../errors/exceptions.dart';
 
 class ChatbotService {
   static const String _baseUrl = 'https://router.huggingface.co/hyperbolic/v1/chat/completions';
-  static const String _apiKey = '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';
-
-  // Modelo gratuito/económico recomendado
+  static const String _apiKey = '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';
   static const String _model = 'meta-llama/Llama-3.3-70B-Instruct';
 
-  // Generar contexto personalizado del usuario
-  String _generateUserContext(UserModel user, PreferenceModel? preferences) {
+  // Generar contexto personalizado del usuario con análisis completo
+  String _generateUserContext(
+      UserModel user,
+      PreferenceModel? preferences,
+      {FaceAnalysisModel? faceAnalysis, HairAnalysisModel? hairAnalysis}
+      ) {
     final buffer = StringBuffer();
 
     buffer.write('Usuario: ${user.displayName ?? "Amigo/a"}');
@@ -33,10 +37,21 @@ class ChatbotService {
       }
     }
 
-    if (user.currentFaceShape != null) {
+    // Información del análisis facial
+    if (faceAnalysis != null) {
+      buffer.write('\nForma de rostro: ${faceAnalysis.faceShape} (confianza: ${(faceAnalysis.confidence * 100).toStringAsFixed(1)}%)');
+    } else if (user.currentFaceShape != null) {
       buffer.write('\nForma de rostro: ${user.currentFaceShape}');
     }
 
+    // Información del análisis de cabello
+    if (hairAnalysis != null) {
+      buffer.write('\nTipo de cabello: ${hairAnalysis.hairType} (confianza: ${(hairAnalysis.confidence * 100).toStringAsFixed(1)}%)');
+    } else if (user.currentHairType != null) {
+      buffer.write('\nTipo de cabello: ${user.currentHairType}');
+    }
+
+    // Información corporal
     if (user.bodyType != null) {
       buffer.write('\nTipo de cuerpo: ${user.bodyType}');
     }
@@ -44,8 +59,12 @@ class ChatbotService {
     return buffer.toString();
   }
 
-  // Sistema de prompts personalizado
-  String _getSystemPrompt(String userContext) {
+  // Sistema de prompts personalizado (actualizado)
+  String _getSystemPrompt(String userContext, {bool isHairstyleConsultation = false}) {
+    if (isHairstyleConsultation) {
+      return _getHairstyleSystemPrompt(userContext);
+    }
+
     return '''Eres HuapoAI, un asistente experto en moda y estilo personal. Tu personalidad es amigable, entusiasta y siempre dispuesto a ayudar.
 
 INFORMACIÓN DEL USUARIO:
@@ -73,6 +92,76 @@ ESPECIALIDADES:
 - Consejos de styling y accesorios''';
   }
 
+  // Sistema de prompts especializado para peinados
+  String _getHairstyleSystemPrompt(String userContext) {
+    return '''Eres HuapoAI, un experto estilista y consultor de peinados con amplia experiencia en barbería moderna y estilismo profesional.
+
+INFORMACIÓN DEL USUARIO:
+$userContext
+
+ERES EXPERTO EN:
+🔹 **Fade Cuts**: Low fade, Mid fade, High fade, Skin fade, Drop fade, Taper fade
+🔹 **Cortes Clásicos**: Buzz cut, Crew cut, Caesar cut, Ivy League
+🔹 **Cortes Modernos**: Undercut, Pompadour, Quiff, Side part, Slick back
+🔹 **Cortes Texturizados**: Messy top, Textured crop, Fringe, Spiky hair
+🔹 **Cortes Largos**: Man bun, Top knot, Flow, Surfer hair
+
+RECOMENDACIONES POR FORMA DE ROSTRO:
+- **Oval**: Casi todos los estilos funcionan
+- **Redondo**: Altura arriba, evitar volumen lateral
+- **Cuadrado**: Suavizar con ondas, evitar geométricos
+- **Corazón**: Equilibrar frente amplia
+- **Diamante**: Volumen en frente y barbilla
+- **Alargado**: Volumen lateral, evitar mucha altura
+
+RECOMENDACIONES POR TIPO DE CABELLO:
+- **Liso**: Fades, pompadours, slick backs
+- **Ondulado**: Texturas naturales, quiffs, messy styles
+- **Rizado**: Define rizos, considera encogimiento
+- **Crespo**: Respeta textura, fades altos, afros
+
+INSTRUCCIONES DE RESPUESTA:
+- Sé directo con nombres específicos de cortes
+- Explica qué significa cada término técnico brevemente
+- Da 2-3 opciones concretas máximo
+- Incluye consejos de mantenimiento
+- Menciona productos si es relevante
+- Usa emojis para visualizar
+- Mantén tono amigable pero profesional
+
+FORMATO DE RESPUESTA IDEAL:
+"✂️ **[Nombre del corte]**
+- Por qué te queda: [razón específica]
+- Mantenimiento: [frecuencia]
+- Productos: [si aplica]"
+
+Solo habla de peinados, cortes, cuidado capilar y barbería.''';
+  }
+
+  // Consulta específica de peinados (NUEVA FUNCIÓN)
+  Future<String> sendHairstyleMessage({
+    required String message,
+    required UserModel user,
+    PreferenceModel? preferences,
+    FaceAnalysisModel? faceAnalysis,
+    HairAnalysisModel? hairAnalysis,
+    List<Map<String, String>>? conversationHistory,
+  }) async {
+    final userContext = _generateUserContext(
+      user,
+      preferences,
+      faceAnalysis: faceAnalysis,
+      hairAnalysis: hairAnalysis,
+    );
+    final systemPrompt = _getSystemPrompt(userContext, isHairstyleConsultation: true);
+
+    return await _sendMessage(
+      systemPrompt,
+      message,
+      conversationHistory ?? [],
+    );
+  }
+
   // Iniciar conversación con saludo personalizado
   Future<String> startConversation(UserModel user, PreferenceModel? preferences) async {
     final userContext = _generateUserContext(user, preferences);
@@ -89,7 +178,7 @@ Puedo darte consejos sobre:
     return await _sendMessage(systemPrompt, welcomeMessage, []);
   }
 
-  // Enviar mensaje al chatbot
+  // Enviar mensaje al chatbot (función original actualizada)
   Future<String> sendMessage(
       String message,
       UserModel user,
@@ -100,6 +189,36 @@ Puedo darte consejos sobre:
     final systemPrompt = _getSystemPrompt(userContext);
 
     return await _sendMessage(systemPrompt, message, conversationHistory);
+  }
+
+  // Generar recomendaciones automáticas de peinados (NUEVA FUNCIÓN)
+  Future<String> generateHairstyleRecommendations({
+    required UserModel user,
+    required FaceAnalysisModel faceAnalysis,
+    required HairAnalysisModel hairAnalysis,
+    PreferenceModel? preferences,
+  }) async {
+    final userContext = _generateUserContext(
+      user,
+      preferences,
+      faceAnalysis: faceAnalysis,
+      hairAnalysis: hairAnalysis,
+    );
+    final systemPrompt = _getSystemPrompt(userContext, isHairstyleConsultation: true);
+
+    final autoQuery = '''
+Basándote en mi análisis completo, dame 3 recomendaciones específicas de cortes/peinados perfectos para mí.
+
+Para cada recomendación incluye:
+1. Nombre técnico del corte
+2. Por qué funciona para mi combinación rostro-cabello
+3. Nivel de mantenimiento (bajo/medio/alto)
+4. Si está de moda actualmente
+
+Sé directo y específico. Explica los términos técnicos brevemente.
+''';
+
+    return await _sendMessage(systemPrompt, autoQuery, []);
   }
 
   // Método privado para comunicarse con OpenRouter
@@ -131,12 +250,12 @@ Puedo darte consejos sobre:
         headers: {
           'Authorization': 'Bearer $_apiKey',
           'Content-Type': 'application/json',
-          'X-Title': 'HuapoAI Fashion Assistant', // opcional pero válido
+          'X-Title': 'HuapoAI Fashion Assistant',
         },
         body: json.encode({
           'model': _model,
           'messages': messages,
-          'max_tokens': 500,
+          'max_tokens': 600, // Aumentado para respuestas más detalladas
           'temperature': 0.7,
           'top_p': 1,
           'frequency_penalty': 0,
@@ -196,7 +315,6 @@ Responde en formato estructurado para que sea fácil de entender.''';
 
     final response = await _sendMessage(systemPrompt, message, []);
 
-    // Procesar la respuesta para extraer información estructurada
     return {
       'response': response,
       'timestamp': DateTime.now().toIso8601String(),
@@ -204,45 +322,30 @@ Responde en formato estructurado para que sea fácil de entender.''';
     };
   }
 
-  // Analizar foto de outfit (función futura)
-  Future<String> analyzeOutfitPhoto(
-      UserModel user,
-      PreferenceModel? preferences,
-      String photoDescription,
-      ) async {
-    final userContext = _generateUserContext(user, preferences);
-    final systemPrompt = _getSystemPrompt(userContext);
+  // Obtener consultas rápidas para peinados (NUEVA FUNCIÓN)
+  List<String> getHairstyleQuickQueries({
+    FaceAnalysisModel? faceAnalysis,
+    HairAnalysisModel? hairAnalysis
+  }) {
+    if (faceAnalysis != null && hairAnalysis != null) {
+      return [
+        'Cortes modernos para mí',
+        'Fade cuts recomendados',
+        'Peinados formales',
+        'Estilos casuales',
+        'Tendencias 2025',
+        'Mantenimiento de mi corte',
+        'Productos para mi cabello',
+      ];
+    }
 
-    final message = '''Analiza este outfit que llevo puesto: $photoDescription
-    
-Dame tu opinión honesta sobre:
-- Si los colores me favorecen
-- Si el estilo se adapta a mi tipo de cuerpo
-- Qué mejorarías
-- Puntuación del 1 al 10
-- Sugerencias específicas''';
-
-    return await _sendMessage(systemPrompt, message, []);
-  }
-
-  // Obtener tendencias personalizadas
-  Future<String> getPersonalizedTrends(
-      UserModel user,
-      PreferenceModel? preferences,
-      String season,
-      ) async {
-    final userContext = _generateUserContext(user, preferences);
-    final systemPrompt = _getSystemPrompt(userContext);
-
-    final message = '''¿Qué tendencias de moda para $season se adaptarían mejor a mi estilo y características?
-    
-Considera:
-- Mi tipo de cuerpo y forma de rostro
-- Mis colores y estilos favoritos
-- Tendencias actuales de $season
-- Cómo adaptar las tendencias a mi personalidad''';
-
-    return await _sendMessage(systemPrompt, message, []);
+    return [
+      'Cortes de moda actuales',
+      'Qué tipos de fade existen',
+      'Diferencia entre pompadour y quiff',
+      'Cortes para cabello rizado',
+      'Estilos de barbería moderna',
+    ];
   }
 
   // Validar si el servicio está disponible

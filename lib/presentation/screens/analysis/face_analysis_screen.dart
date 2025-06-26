@@ -9,9 +9,14 @@ import '../../providers/auth_provider.dart';
 import '../../../data/repositories/face_analysis_repository.dart';
 import '../../../data/models/face_analysis_model.dart';
 import '../../../data/models/hair_analysis_model.dart';
+import '../../../data/models/preference_model.dart';
+import '../../../data/models/hairstyle_recommendation_model.dart';
+import '../../../data/repositories/preference_repository.dart';
 import '../../../core/services/roboflow_service.dart';
+import '../../../core/services/hairstyle_recommendation_service.dart';
 import '../../widgets/analysis/face_shape_card.dart';
 import '../../widgets/analysis/hair_type_card.dart';
+import '../../widgets/hairstyle/hairstyle_recommendations_widget.dart';
 import '../../widgets/common/custom_button.dart';
 
 class FaceAnalysisScreen extends StatefulWidget {
@@ -24,6 +29,8 @@ class FaceAnalysisScreen extends StatefulWidget {
 class _FaceAnalysisScreenState extends State<FaceAnalysisScreen>
     with TickerProviderStateMixin {
   final FaceAnalysisRepository _faceAnalysisRepository = FaceAnalysisRepository();
+  final PreferenceRepository _preferenceRepository = PreferenceRepository();
+  final HairstyleRecommendationService _hairstyleService = HairstyleRecommendationService();
   final ImagePicker _imagePicker = ImagePicker();
 
   late TabController _tabController;
@@ -34,10 +41,14 @@ class _FaceAnalysisScreenState extends State<FaceAnalysisScreen>
   File? _selectedImage;
   String? _analysisImageUrl;
 
+  // Variables para recomendaciones de peinados
+  bool _isGeneratingRecommendations = false;
+  HairstyleRecommendationSet? _currentRecommendations;
+
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
     _loadExistingAnalyses();
   }
 
@@ -81,6 +92,7 @@ class _FaceAnalysisScreenState extends State<FaceAnalysisScreen>
           tabs: const [
             Tab(text: 'Analizar', icon: Icon(Icons.camera_alt)),
             Tab(text: 'Resultados', icon: Icon(Icons.analytics)),
+            Tab(text: 'Peinados IA', icon: Icon(Icons.psychology)),
             Tab(text: 'Rostro', icon: Icon(Icons.face)),
             Tab(text: 'Cabello', icon: Icon(Icons.content_cut)),
           ],
@@ -91,6 +103,7 @@ class _FaceAnalysisScreenState extends State<FaceAnalysisScreen>
         children: [
           _buildAnalysisTab(),
           _buildResultsTab(),
+          _buildHairstyleAITab(),
           _buildFaceGuideTab(),
           _buildHairGuideTab(),
         ],
@@ -147,7 +160,7 @@ class _FaceAnalysisScreenState extends State<FaceAnalysisScreen>
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'Rostro + Cabello',
+                              'Rostro + Cabello + Recomendaciones Visuales',
                               style: Theme.of(context).textTheme.titleSmall?.copyWith(
                                 color: Theme.of(context).colorScheme.primary,
                                 fontWeight: FontWeight.w600,
@@ -160,7 +173,7 @@ class _FaceAnalysisScreenState extends State<FaceAnalysisScreen>
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Nuestra IA analizará tanto la forma de tu rostro como tu tipo de cabello para darte recomendaciones personalizadas completas.',
+                    'Nuestra IA analizará tu rostro y cabello para generar recomendaciones personalizadas con imágenes de referencia de los mejores cortes para ti.',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ],
@@ -219,6 +232,13 @@ class _FaceAnalysisScreenState extends State<FaceAnalysisScreen>
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 12),
+                  CustomButton(
+                    text: 'Ver Recomendaciones Visuales',
+                    icon: Icons.image_search,
+                    onPressed: () => _tabController.animateTo(2),
+                    width: double.infinity,
                   ),
                 ],
               ),
@@ -405,6 +425,64 @@ class _FaceAnalysisScreenState extends State<FaceAnalysisScreen>
             const SizedBox(height: 24),
           ],
 
+          // Acceso rápido a recomendaciones visuales
+          if (_currentFaceAnalysis != null && _currentHairAnalysis != null) ...[
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.primary,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.image_search,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Recomendaciones Visuales',
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                'Cortes específicos con imágenes de referencia',
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    CustomButton(
+                      text: 'Ver Recomendaciones con Imágenes',
+                      icon: Icons.auto_awesome,
+                      onPressed: () => _tabController.animateTo(2),
+                      width: double.infinity,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
           // Recomendaciones combinadas
           if (_currentFaceAnalysis != null && _currentHairAnalysis != null) ...[
             Card(
@@ -505,6 +583,228 @@ class _FaceAnalysisScreenState extends State<FaceAnalysisScreen>
             width: double.infinity,
             isOutlined: true,
           ),
+        ],
+      ),
+    );
+  }
+
+  // Nueva pestaña para recomendaciones visuales de peinados
+  Widget _buildHairstyleAITab() {
+    final authProvider = context.watch<AuthProvider>();
+    final user = authProvider.user;
+
+    if (_currentFaceAnalysis == null || _currentHairAnalysis == null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.psychology_outlined,
+              size: 80,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Necesitas análisis completo',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Para recibir recomendaciones visuales\nde peinados personalizadas, primero\ncompleta tu análisis facial y de cabello.',
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            CustomButton(
+              text: 'Ir a Análisis',
+              icon: Icons.arrow_forward,
+              onPressed: () => _tabController.animateTo(0),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header con información del usuario
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
+                  Theme.of(context).colorScheme.surface,
+                ],
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+              ),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.auto_awesome,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Recomendaciones Visuales IA',
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            'Con imágenes de referencia personalizadas',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '👤 Rostro: ${_currentFaceAnalysis!.faceShape}',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          '✂️ Cabello: ${_currentHairAnalysis!.hairType}',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Botón principal para generar recomendaciones
+          if (_currentRecommendations == null) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                ),
+              ),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.image_search,
+                    size: 60,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    '¡Genera tus recomendaciones!',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Obtén 3 cortes específicos con imágenes\nde referencia basados en tu análisis personal',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  CustomButton(
+                    text: 'Generar Recomendaciones con Imágenes',
+                    icon: Icons.psychology,
+                    onPressed: _isGeneratingRecommendations ? null : _generateVisualRecommendations,
+                    width: double.infinity,
+                    isLoading: _isGeneratingRecommendations,
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
+            // Mostrar recomendaciones generadas
+            HairstyleRecommendationsWidget(
+              recommendationSet: _currentRecommendations!,
+              onRefresh: _generateVisualRecommendations,
+              onStyleSelected: _onStyleSelected,
+            ),
+          ],
+
+          const SizedBox(height: 24),
+
+          // Botones de acciones rápidas
+          if (_currentRecommendations != null) ...[
+            Text(
+              'Acciones Rápidas',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: CustomButton(
+                    text: 'Tendencias 2025',
+                    icon: Icons.trending_up,
+                    onPressed: _showTrends,
+                    isOutlined: true,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: CustomButton(
+                    text: 'Estilos Similares',
+                    icon: Icons.compare_arrows,
+                    onPressed: _showSimilarStyles,
+                    isOutlined: true,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -968,6 +1268,304 @@ class _FaceAnalysisScreenState extends State<FaceAnalysisScreen>
     }
   }
 
+// Generar recomendaciones visuales
+  Future<void> _generateVisualRecommendations() async {
+    if (_currentFaceAnalysis == null || _currentHairAnalysis == null) return;
+
+    setState(() {
+      _isGeneratingRecommendations = true;
+    });
+
+    try {
+      final authProvider = context.read<AuthProvider>();
+      final user = authProvider.user!;
+
+      // Obtener preferencias del usuario
+      PreferenceModel? preferences;
+      try {
+        preferences = await _preferenceRepository.getPreferences(user.uid);
+      } catch (e) {
+        print('Error obteniendo preferencias: $e');
+      }
+
+      // Generar recomendaciones con imágenes
+      final recommendations = await _hairstyleService.generateRecommendationsWithImages(
+        user: user,
+        faceAnalysis: _currentFaceAnalysis!,
+        hairAnalysis: _currentHairAnalysis!,
+        preferences: preferences,
+      );
+
+      setState(() {
+        _currentRecommendations = recommendations;
+        _isGeneratingRecommendations = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('¡Recomendaciones generadas exitosamente!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+    } catch (e) {
+      setState(() {
+        _isGeneratingRecommendations = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error generando recomendaciones: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+// Cuando el usuario selecciona un estilo
+  void _onStyleSelected(HairstyleRecommendation recommendation) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(recommendation.name),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('¿Te gusta este estilo?'),
+            const SizedBox(height: 16),
+            Text(
+              recommendation.whyItWorks,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Mantenimiento: ${recommendation.maintenanceLevel}',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cerrar'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _saveStyleAsFavorite(recommendation);
+            },
+            child: const Text('Guardar como Favorito'),
+          ),
+        ],
+      ),
+    );
+  }
+
+// Mostrar tendencias actuales
+  Future<void> _showTrends() async {
+    try {
+      final authProvider = context.read<AuthProvider>();
+      final user = authProvider.user!;
+
+      final trends = await _hairstyleService.getCurrentTrends(
+        user: user,
+        faceAnalysis: _currentFaceAnalysis,
+        hairAnalysis: _currentHairAnalysis,
+      );
+
+      if (mounted) {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          builder: (context) => DraggableScrollableSheet(
+            initialChildSize: 0.7,
+            maxChildSize: 0.9,
+            minChildSize: 0.5,
+            expand: false,
+            builder: (context, scrollController) => Container(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Tendencias 2025',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: ListView.builder(
+                      controller: scrollController,
+                      itemCount: trends.length,
+                      itemBuilder: (context, index) {
+                        final trend = trends[index];
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          child: ListTile(
+                            leading: trend.previewImageUrl != null
+                                ? ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                trend.previewImageUrl!,
+                                width: 60,
+                                height: 60,
+                                fit: BoxFit.cover,
+                              ),
+                            )
+                                : Container(
+                              width: 60,
+                              height: 60,
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.primaryContainer,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(Icons.trending_up),
+                            ),
+                            title: Text(trend.name),
+                            subtitle: Text(trend.description),
+                            trailing: const Icon(Icons.arrow_forward_ios),
+                            onTap: () => _onStyleSelected(trend),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error cargando tendencias: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+// Mostrar estilos similares
+  Future<void> _showSimilarStyles() async {
+    if (_currentRecommendations == null || _currentRecommendations!.recommendations.isEmpty) {
+      return;
+    }
+
+    try {
+      final firstRecommendation = _currentRecommendations!.recommendations.first;
+      final similarStyles = await _hairstyleService.findSimilarStyles(firstRecommendation.name);
+
+      if (mounted) {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          builder: (context) => DraggableScrollableSheet(
+            initialChildSize: 0.7,
+            maxChildSize: 0.9,
+            minChildSize: 0.5,
+            expand: false,
+            builder: (context, scrollController) => Container(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Estilos Similares',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Basado en: ${firstRecommendation.name}',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: ListView.builder(
+                      controller: scrollController,
+                      itemCount: similarStyles.length,
+                      itemBuilder: (context, index) {
+                        final style = similarStyles[index];
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          child: ListTile(
+                            leading: style.previewImageUrl != null
+                                ? ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                style.previewImageUrl!,
+                                width: 60,
+                                height: 60,
+                                fit: BoxFit.cover,
+                              ),
+                            )
+                                : Container(
+                              width: 60,
+                              height: 60,
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.secondaryContainer,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(Icons.content_cut),
+                            ),
+                            title: Text(style.name),
+                            subtitle: Text(style.description),
+                            trailing: const Icon(Icons.arrow_forward_ios),
+                            onTap: () => _onStyleSelected(style),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error cargando estilos similares: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+// Guardar estilo como favorito
+  void _saveStyleAsFavorite(HairstyleRecommendation recommendation) {
+    // Aquí puedes implementar la lógica para guardar en favoritos
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${recommendation.name} guardado en favoritos'),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
   Future<void> _saveToProfile() async {
     final authProvider = context.read<AuthProvider>();
     final userId = authProvider.user?.uid;
@@ -1127,4 +1725,5 @@ class _FaceAnalysisScreenState extends State<FaceAnalysisScreen>
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year}';
   }
+
 }

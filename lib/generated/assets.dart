@@ -18,7 +18,9 @@ class Assets {
   static const String commonCustomButton = 'lib/presentation/widgets/common/custom_button.dart';
   static const String commonCustomTextField = 'lib/presentation/widgets/common/custom_text_field.dart';
   static const String commonLoadingWidget = 'lib/presentation/widgets/common/loading_widget.dart';
+  static const String commonStylePlaceholder = 'lib/presentation/widgets/common/style_placeholder.dart';
   static const String commonUserAvatar = 'lib/presentation/widgets/common/user_avatar.dart';
+  static const String configApiConfig = 'lib/core/config/api_config.dart';
   static const String constantsAppConstants = 'lib/core/constants/app_constants.dart';
   static const String constantsFirebaseConstants = 'lib/core/constants/firebase_constants.dart';
   static const String datasourcesAuthDatasource = 'lib/data/datasources/auth_datasource.dart';
@@ -26,6 +28,7 @@ class Assets {
   static const String datasourcesRoboflowDatasource = 'lib/data/datasources/roboflow_datasource.dart';
   static const String errorsExceptions = 'lib/core/errors/exceptions.dart';
   static const String generatedAssets = 'lib/generated/assets.dart';
+  static const String hairstyleHairstyleRecommendationsWidget = 'lib/presentation/widgets/hairstyle/hairstyle_recommendations_widget.dart';
   static const String healthHealthTipCard = 'lib/presentation/widgets/health/health_tip_card.dart';
   static const String healthHealthTipsScreen = 'lib/presentation/screens/health/health_tips_screen.dart';
   static const String homeHomeScreen = 'lib/presentation/screens/home/home_screen.dart';
@@ -39,12 +42,14 @@ class Assets {
   static const String modelsColorPaletteModel = 'lib/data/models/color_palette_model.dart';
   static const String modelsFaceAnalysisModel = 'lib/data/models/face_analysis_model.dart';
   static const String modelsHairAnalysisModel = 'lib/data/models/hair_analysis_model.dart';
+  static const String modelsHairstyleRecommendationModel = 'lib/data/models/hairstyle_recommendation_model.dart';
   static const String modelsPersonalizedRecommendationsModel = 'lib/data/models/personalized_recommendations_model.dart';
   static const String modelsPostModel = 'lib/data/models/post_model.dart';
   static const String modelsPreferenceModel = 'lib/data/models/preference_model.dart';
   static const String modelsTransformationPostModel = 'lib/data/models/transformation_post_model.dart';
   static const String modelsUserModel = 'lib/data/models/user_model.dart';
   static const String preferencesColorSelector = 'lib/presentation/widgets/preferences/color_selector.dart';
+  static const String preferencesGenderSelector = 'lib/presentation/widgets/preferences/gender_selector.dart';
   static const String preferencesStyleSelector = 'lib/presentation/widgets/preferences/style_selector.dart';
   static const String profileEditPreferencesScreen = 'lib/presentation/screens/profile/edit_preferences_screen.dart';
   static const String profileProfileScreen = 'lib/presentation/screens/profile/profile_screen.dart';
@@ -70,6 +75,8 @@ class Assets {
   static const String routesAppRoutes = 'lib/presentation/routes/app_routes.dart';
   static const String servicesChatbotService = 'lib/core/services/chatbot_service.dart';
   static const String servicesFirebaseService = 'lib/core/services/firebase_service.dart';
+  static const String servicesHairstyleRecommendationService = 'lib/core/services/hairstyle_recommendation_service.dart';
+  static const String servicesImageSearchService = 'lib/core/services/image_search_service.dart';
   static const String servicesPersonalizedRecommendationsService = 'lib/core/services/personalized_recommendations_service.dart';
   static const String servicesRoboflowService = 'lib/core/services/roboflow_service.dart';
   static const String servicesStorageService = 'lib/core/services/storage_service.dart';
@@ -88,6 +95,7 @@ class Assets {
   static const String socialTransformationsFeedScreen = 'lib/presentation/screens/social/transformations_feed_screen.dart';
   static const String splashSplashScreen = 'lib/presentation/screens/splash/splash_screen.dart';
   static const String styleColorPaletteScreen = 'lib/presentation/screens/style/color_palette_screen.dart';
+  static const String stylesGotico = 'assets/images/styles/gotico.jpg';
   static const String utilsImageUtils = 'lib/core/utils/image_utils.dart';
   static const String utilsValidators = 'lib/core/utils/validators.dart';
   static const String wellnessPersonalizedRecommendationsScreen = 'lib/presentation/screens/wellness/personalized_recommendations_screen.dart';

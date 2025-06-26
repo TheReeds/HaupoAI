@@ -11,24 +11,28 @@ class ColorSelector extends StatelessWidget {
     required this.onColorToggle,
   });
 
-  static const Map<String, Color> colorOptions = {
-    'Negro': Colors.black,
-    'Blanco': Colors.white,
-    'Gris': Colors.grey,
-    'Azul marino': Color(0xFF1E3A8A),
-    'Azul': Colors.blue,
-    'Azul claro': Colors.lightBlue,
-    'Verde': Colors.green,
-    'Verde oliva': Color(0xFF6B7C32),
-    'Rojo': Colors.red,
-    'Borgoña': Color(0xFF800020),
-    'Rosa': Colors.pink,
-    'Púrpura': Colors.purple,
-    'Naranja': Colors.orange,
-    'Amarillo': Colors.yellow,
-    'Beige': Color(0xFFF5F5DC),
-    'Marrón': Colors.brown,
-  };
+  static final List<Map<String, dynamic>> _colorOptions = [
+    {'name': 'Negro', 'color': Colors.black},
+    {'name': 'Blanco', 'color': Colors.white},
+    {'name': 'Gris', 'color': Colors.grey},
+    {'name': 'Azul Marino', 'color': const Color(0xFF1A237E)},
+    {'name': 'Azul', 'color': Colors.blue},
+    {'name': 'Azul Claro', 'color': Colors.lightBlue},
+    {'name': 'Verde', 'color': Colors.green},
+    {'name': 'Verde Oliva', 'color': const Color(0xFF689F38)},
+    {'name': 'Rojo', 'color': Colors.red},
+    {'name': 'Burdeos', 'color': const Color(0xFF880E4F)},
+    {'name': 'Rosa', 'color': Colors.pink},
+    {'name': 'Púrpura', 'color': Colors.purple},
+    {'name': 'Naranja', 'color': Colors.orange},
+    {'name': 'Amarillo', 'color': Colors.yellow},
+    {'name': 'Beige', 'color': const Color(0xFFF5F5DC)},
+    {'name': 'Marrón', 'color': Colors.brown},
+    {'name': 'Dorado', 'color': const Color(0xFFFFD700)},
+    {'name': 'Plateado', 'color': const Color(0xFFC0C0C0)},
+    {'name': 'Turquesa', 'color': Colors.teal},
+    {'name': 'Coral', 'color': const Color(0xFFFF7043)},
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -39,15 +43,17 @@ class ColorSelector extends StatelessWidget {
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
       ),
-      itemCount: colorOptions.length,
+      itemCount: _colorOptions.length,
       itemBuilder: (context, index) {
-        final colorName = colorOptions.keys.elementAt(index);
-        final colorValue = colorOptions.values.elementAt(index);
+        final colorOption = _colorOptions[index];
+        final colorName = colorOption['name'] as String;
+        final colorValue = colorOption['color'] as Color;
         final isSelected = selectedColors.contains(colorName);
 
         return GestureDetector(
           onTap: () => onColorToggle(colorName),
-          child: Container(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
@@ -56,6 +62,19 @@ class ColorSelector extends StatelessWidget {
                     : Colors.grey.shade300,
                 width: isSelected ? 3 : 1,
               ),
+              boxShadow: isSelected ? [
+                BoxShadow(
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ] : [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -76,11 +95,7 @@ class ColorSelector extends StatelessWidget {
                   child: isSelected
                       ? Icon(
                     Icons.check,
-                    color: colorValue == Colors.white ||
-                        colorValue == Colors.yellow ||
-                        colorValue == Color(0xFFF5F5DC)
-                        ? Colors.black
-                        : Colors.white,
+                    color: _getContrastColor(colorValue),
                     size: 20,
                   )
                       : null,
@@ -90,6 +105,9 @@ class ColorSelector extends StatelessWidget {
                   colorName,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     fontWeight: isSelected ? FontWeight.bold : null,
+                    color: isSelected
+                        ? Theme.of(context).colorScheme.primary
+                        : null,
                   ),
                   textAlign: TextAlign.center,
                   maxLines: 2,
@@ -101,5 +119,11 @@ class ColorSelector extends StatelessWidget {
         );
       },
     );
+  }
+
+  Color _getContrastColor(Color color) {
+    // Calcular si el color es claro u oscuro para elegir el color del check
+    final luminance = color.computeLuminance();
+    return luminance > 0.5 ? Colors.black : Colors.white;
   }
 }

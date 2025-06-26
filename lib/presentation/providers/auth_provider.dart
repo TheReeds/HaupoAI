@@ -184,36 +184,43 @@ class AuthProvider extends ChangeNotifier {
   }) async {
     if (_user == null) return false;
 
-    _setLoading(true);
-    _clearError();
-
     try {
-      // 1. Crear modelo de preferencias
-      final preferences = PreferenceModel.fromSetup(
-        userId: _user!.uid,
-        gender: gender,
-        skinTone: skinTone,
-        selectedColors: selectedColors,
-        selectedStyles: selectedStyles,
-      );
+      _state = AuthState.loading;
+      notifyListeners();
 
-      // 2. Guardar preferencias en Firestore
-      await _preferenceRepository.savePreferences(preferences);
+      // Guardar preferencias si se proporcionaron
+      if (gender != null || skinTone != null ||
+          selectedColors != null || selectedStyles != null) {
+        final preferences = PreferenceModel.fromSetup(
+          userId: _user!.uid,
+          gender: gender,
+          skinTone: skinTone,
+          selectedColors: selectedColors,
+          selectedStyles: selectedStyles,
+        );
 
-      // 3. Actualizar estado de onboarding del usuario
+        await _preferenceRepository.savePreferences(preferences);
+      }
+
+      // Actualizar estado de onboarding
       final updatedUser = await _userRepository.updateOnboardingStatus(
-        _user!.uid,
-        true,
+          _user!.uid,
+          true
       );
 
-      // 4. Actualizar usuario local
+      // IMPORTANTE: Actualizar el usuario local
       _user = updatedUser;
-      _setLoading(false);
+      _state = AuthState.authenticated;
+      _errorMessage = null;
+
+      // Notificar cambios para que el router redirija
       notifyListeners();
 
       return true;
     } catch (e) {
-      _setError('Error al completar configuración: ${e.toString()}');
+      _state = AuthState.error;
+      _errorMessage = e.toString();
+      notifyListeners();
       return false;
     }
   }

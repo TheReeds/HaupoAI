@@ -7,6 +7,7 @@ import '../../providers/auth_provider.dart';
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/preferences/color_selector.dart';
 import '../../widgets/preferences/style_selector.dart';
+import '../../widgets/preferences/gender_selector.dart';
 
 class SetupPreferencesScreen extends StatefulWidget {
   const SetupPreferencesScreen({super.key});
@@ -80,10 +81,17 @@ class _SetupPreferencesScreenState extends State<SetupPreferencesScreen> {
             const SnackBar(
               content: Text('¡Configuración completada exitosamente!'),
               backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
             ),
           );
 
-          // La navegación se manejará automáticamente por el router
+          // Pequeño delay para asegurar que el estado se actualice
+          await Future.delayed(const Duration(milliseconds: 500));
+
+          // Forzar navegación si el router no redirije automáticamente
+          if (mounted && context.canPop()) {
+            context.go('/home');
+          }
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -134,20 +142,39 @@ class _SetupPreferencesScreenState extends State<SetupPreferencesScreen> {
     );
 
     if (shouldSkip == true && mounted) {
+      // Mostrar loading
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+
       // Completar onboarding sin preferencias
       final success = await authProvider.completeOnboarding();
 
-      if (success) {
-        // La navegación se manejará automáticamente
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              authProvider.errorMessage ?? 'Error al completar configuración',
+      if (mounted) {
+        Navigator.of(context).pop(); // Cerrar loading
+
+        if (success) {
+          // Pequeño delay para asegurar que el estado se actualice
+          await Future.delayed(const Duration(milliseconds: 500));
+
+          // Forzar navegación si el router no redirije automáticamente
+          if (mounted && context.canPop()) {
+            context.go('/home');
+          }
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                authProvider.errorMessage ?? 'Error al completar configuración',
+              ),
+              backgroundColor: Colors.red,
             ),
-            backgroundColor: Colors.red,
-          ),
-        );
+          );
+        }
       }
     }
   }
@@ -255,57 +282,13 @@ class _SetupPreferencesScreenState extends State<SetupPreferencesScreen> {
   Widget _buildGenderPage() {
     return Padding(
       padding: const EdgeInsets.all(24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '¿Cuál es tu género?',
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Esto nos ayudará a personalizar mejor tus recomendaciones',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 32),
-          ...['Masculino', 'Femenino', 'No binario', 'Prefiero no decir'].map(
-                (gender) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: () {
-                    setState(() {
-                      _selectedGender = gender;
-                    });
-                  },
-                  style: OutlinedButton.styleFrom(
-                    backgroundColor: _selectedGender == gender
-                        ? Theme.of(context).colorScheme.primaryContainer
-                        : null,
-                    foregroundColor: _selectedGender == gender
-                        ? Theme.of(context).colorScheme.onPrimaryContainer
-                        : null,
-                    side: BorderSide(
-                      color: _selectedGender == gender
-                          ? Theme.of(context).colorScheme.primary
-                          : Theme.of(context).colorScheme.outline,
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  child: Text(
-                    gender,
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
+      child: GenderSelector(
+        selectedGender: _selectedGender,
+        onGenderSelected: (gender) {
+          setState(() {
+            _selectedGender = gender;
+          });
+        },
       ),
     );
   }
@@ -358,7 +341,8 @@ class _SetupPreferencesScreenState extends State<SetupPreferencesScreen> {
                       _selectedSkinTone = skinTone['name'] as String;
                     });
                   },
-                  child: Container(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
@@ -367,6 +351,13 @@ class _SetupPreferencesScreenState extends State<SetupPreferencesScreen> {
                             : Theme.of(context).colorScheme.outline,
                         width: isSelected ? 3 : 1,
                       ),
+                      boxShadow: isSelected ? [
+                        BoxShadow(
+                          color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ] : null,
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -388,6 +379,9 @@ class _SetupPreferencesScreenState extends State<SetupPreferencesScreen> {
                           skinTone['name'] as String,
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             fontWeight: isSelected ? FontWeight.bold : null,
+                            color: isSelected
+                                ? Theme.of(context).colorScheme.primary
+                                : null,
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -456,12 +450,31 @@ class _SetupPreferencesScreenState extends State<SetupPreferencesScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Selecciona los estilos que más te representan (mínimo 1)',
+            'Desliza y selecciona los estilos que más te representan',
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 16),
+          // Indicador de páginas
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.swipe_left,
+                size: 16,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Desliza para ver más estilos',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
           Expanded(
             child: StyleSelector(
               selectedStyles: _selectedStyles,
@@ -476,6 +489,23 @@ class _SetupPreferencesScreenState extends State<SetupPreferencesScreen> {
               },
             ),
           ),
+          // Contador de selecciones
+          if (_selectedStyles.isNotEmpty)
+            Container(
+              margin: const EdgeInsets.only(top: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                '${_selectedStyles.length} estilo${_selectedStyles.length == 1 ? '' : 's'} seleccionado${_selectedStyles.length == 1 ? '' : 's'}',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
         ],
       ),
     );
