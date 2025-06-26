@@ -37,6 +37,13 @@
             {
               "client_id": "547065230418-60ht9vjal3hq57cv2kcevvgsr4nsonob.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "547065230418-htgt05ocf3d3334r4a54gfer9t8usiai.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.tuempresa.huapoai"
+              }
             }
           ]
         }
