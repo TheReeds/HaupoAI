@@ -24,6 +24,11 @@ class UserModel {
 
   // Campos para análisis corporal
   final String? bodyType;
+  final String? bodyShape;
+  final String? detectedGender;
+  final double? bodyTypeConfidence;
+  final double? bodyShapeConfidence;
+  final double? genderConfidence;
   final DateTime? lastBodyAnalysis;
 
   UserModel({
@@ -42,6 +47,11 @@ class UserModel {
     this.hairAnalysisConfidence,
     this.lastHairAnalysis,
     this.bodyType,
+    this.bodyShape,
+    this.detectedGender,
+    this.bodyTypeConfidence,
+    this.bodyShapeConfidence,
+    this.genderConfidence,
     this.lastBodyAnalysis,
   });
 
@@ -88,6 +98,11 @@ class UserModel {
           ? (data['lastHairAnalysis'] as Timestamp).toDate()
           : null,
       bodyType: data['bodyType'],
+      bodyShape: data['bodyShape'],
+      detectedGender: data['detectedGender'],
+      bodyTypeConfidence: data['bodyTypeConfidence']?.toDouble(),
+      bodyShapeConfidence: data['bodyShapeConfidence']?.toDouble(),
+      genderConfidence: data['genderConfidence']?.toDouble(),
       lastBodyAnalysis: data['lastBodyAnalysis'] != null
           ? (data['lastBodyAnalysis'] as Timestamp).toDate()
           : null,
@@ -117,6 +132,11 @@ class UserModel {
           ? Timestamp.fromDate(lastHairAnalysis!)
           : null,
       'bodyType': bodyType,
+      'bodyShape': bodyShape,
+      'detectedGender': detectedGender,
+      'bodyTypeConfidence': bodyTypeConfidence,
+      'bodyShapeConfidence': bodyShapeConfidence,
+      'genderConfidence': genderConfidence,
       'lastBodyAnalysis': lastBodyAnalysis != null
           ? Timestamp.fromDate(lastBodyAnalysis!)
           : null,
@@ -137,6 +157,11 @@ class UserModel {
     double? hairAnalysisConfidence,
     DateTime? lastHairAnalysis,
     String? bodyType,
+    String? bodyShape,
+    String? detectedGender,
+    double? bodyTypeConfidence,
+    double? bodyShapeConfidence,
+    double? genderConfidence,
     DateTime? lastBodyAnalysis,
   }) {
     return UserModel(
@@ -155,6 +180,11 @@ class UserModel {
       hairAnalysisConfidence: hairAnalysisConfidence ?? this.hairAnalysisConfidence,
       lastHairAnalysis: lastHairAnalysis ?? this.lastHairAnalysis,
       bodyType: bodyType ?? this.bodyType,
+      bodyShape: bodyShape ?? this.bodyShape,
+      detectedGender: detectedGender ?? this.detectedGender,
+      bodyTypeConfidence: bodyTypeConfidence ?? this.bodyTypeConfidence,
+      bodyShapeConfidence: bodyShapeConfidence ?? this.bodyShapeConfidence,
+      genderConfidence: genderConfidence ?? this.genderConfidence,
       lastBodyAnalysis: lastBodyAnalysis ?? this.lastBodyAnalysis,
     );
   }
@@ -163,7 +193,7 @@ class UserModel {
   bool get hasFaceAnalysis => currentFaceShape != null && currentFaceShape!.isNotEmpty;
   bool get hasHairAnalysis => currentHairType != null && currentHairType!.isNotEmpty;
   bool get hasBodyAnalysis => bodyType != null && bodyType!.isNotEmpty;
-  bool get hasCompleteAnalysis => hasFaceAnalysis && hasHairAnalysis;
+  bool get hasCompleteAnalysis => hasFaceAnalysis && hasHairAnalysis && hasBodyAnalysis;
 
   bool get needsFaceAnalysisUpdate {
     if (!hasFaceAnalysis) return true;
@@ -201,8 +231,8 @@ class UserModel {
     // Análisis de cabello (25%)
     if (hasHairAnalysis) completion += 0.25;
 
-    // Análisis corporal (10%)
-    if (hasBodyAnalysis) completion += 0.1;
+    // Análisis corporal (15%)
+    if (hasBodyAnalysis) completion += 0.15;
 
     return completion;
   }

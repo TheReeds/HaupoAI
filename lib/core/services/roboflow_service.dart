@@ -8,17 +8,196 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../errors/exceptions.dart';
 import '../../data/models/face_analysis_model.dart';
 import '../../data/models/hair_analysis_model.dart';
+import '../../data/models/body_analysis_model.dart';
 
 class RoboflowService {
   static const String _baseUrl = 'https://serverless.roboflow.com';
   static const String _apiKey = 'kzEso6BdqfaNpl9MxyZn';
   static const String _faceShapeModel = 'face-shape-n9tfv/3';
   static const String _hairDetectionModel = 'hair-pddt2/1';
+  static const String _bodyAnalysisModel = 'bodymeasure-sotdp/5';
 
   final FirebaseStorage _storage = FirebaseStorage.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // Analizar tanto forma del rostro como tipo de cabello desde archivo
+  // Analizar perfil completo: rostro, cabello y cuerpo desde archivo
+  Future<Map<String, dynamic>> analyzeFullProfile({
+    required String userId,
+    required File imageFile,
+  }) async {
+    try {
+      // Verificar autenticación
+      if (_auth.currentUser == null || _auth.currentUser!.uid != userId) {
+        throw AppException('Usuario no autenticado o UID incorrecto');
+      }
+
+      // 1. Subir imagen temporal a Firebase Storage
+      final tempImageUrl = await _uploadTempImage(userId, imageFile);
+
+      // 2. Ejecutar todos los análisis en paralelo
+      final results = await Future.wait([
+        _callRoboflowAPI(model: _faceShapeModel, imageFile: imageFile),
+        _callRoboflowAPI(model: _hairDetectionModel, imageFile: imageFile),
+        _callRoboflowAPI(model: _bodyAnalysisModel, imageFile: imageFile),
+      ]);
+
+      final faceResult = results[0];
+      final hairResult = results[1];
+      final bodyResult = results[2];
+
+      // 3. Crear modelos de análisis
+      final faceAnalysis = FaceAnalysisModel.fromRoboflowResponse(
+        userId: userId,
+        response: faceResult,
+        imageUrl: tempImageUrl,
+      );
+
+      final hairAnalysis = HairAnalysisModel.fromRoboflowResponse(
+        userId: userId,
+        response: hairResult,
+        imageUrl: tempImageUrl,
+      );
+
+      final bodyAnalysis = BodyAnalysisModel.fromRoboflowResponse(
+        userId: userId,
+        response: bodyResult,
+        imageUrl: tempImageUrl,
+      );
+
+      return {
+        'faceAnalysis': faceAnalysis,
+        'hairAnalysis': hairAnalysis,
+        'bodyAnalysis': bodyAnalysis,
+        'imageUrl': tempImageUrl,
+      };
+
+    } catch (e) {
+      print('Error en analyzeFullProfile: $e');
+      throw AppException('Error en análisis completo: ${e.toString()}');
+    }
+  }
+
+  // Analizar perfil completo desde URL
+  Future<Map<String, dynamic>> analyzeFullProfileFromUrl({
+    required String userId,
+    required String imageUrl,
+  }) async {
+    try {
+      // Verificar autenticación
+      if (_auth.currentUser == null || _auth.currentUser!.uid != userId) {
+        throw AppException('Usuario no autenticado o UID incorrecto');
+      }
+
+      // 1. Ejecutar todos los análisis en paralelo
+      final results = await Future.wait([
+        _callRoboflowAPIFromUrl(model: _faceShapeModel, imageUrl: imageUrl),
+        _callRoboflowAPIFromUrl(model: _hairDetectionModel, imageUrl: imageUrl),
+        _callRoboflowAPIFromUrl(model: _bodyAnalysisModel, imageUrl: imageUrl),
+      ]);
+
+      final faceResult = results[0];
+      final hairResult = results[1];
+      final bodyResult = results[2];
+
+      // 2. Crear modelos de análisis
+      final faceAnalysis = FaceAnalysisModel.fromRoboflowResponse(
+        userId: userId,
+        response: faceResult,
+        imageUrl: imageUrl,
+      );
+
+      final hairAnalysis = HairAnalysisModel.fromRoboflowResponse(
+        userId: userId,
+        response: hairResult,
+        imageUrl: imageUrl,
+      );
+
+      final bodyAnalysis = BodyAnalysisModel.fromRoboflowResponse(
+        userId: userId,
+        response: bodyResult,
+        imageUrl: imageUrl,
+      );
+
+      return {
+        'faceAnalysis': faceAnalysis,
+        'hairAnalysis': hairAnalysis,
+        'bodyAnalysis': bodyAnalysis,
+        'imageUrl': imageUrl,
+      };
+
+    } catch (e) {
+      print('Error en analyzeFullProfileFromUrl: $e');
+      throw AppException('Error en análisis completo: ${e.toString()}');
+    }
+  }
+
+  // Analizar solo cuerpo desde archivo
+  Future<BodyAnalysisModel> analyzeBodyType({
+    required String userId,
+    required File imageFile,
+  }) async {
+    try {
+      // Verificar autenticación
+      if (_auth.currentUser == null || _auth.currentUser!.uid != userId) {
+        throw AppException('Usuario no autenticado o UID incorrecto');
+      }
+
+      // 1. Subir imagen temporal a Firebase Storage
+      final tempImageUrl = await _uploadTempImage(userId, imageFile);
+
+      // 2. Analizar con Roboflow
+      final analysisResult = await _callRoboflowAPI(
+        model: _bodyAnalysisModel,
+        imageFile: imageFile,
+      );
+
+      // 3. Crear modelo de análisis
+      final bodyAnalysis = BodyAnalysisModel.fromRoboflowResponse(
+        userId: userId,
+        response: analysisResult,
+        imageUrl: tempImageUrl,
+      );
+
+      return bodyAnalysis;
+
+    } catch (e) {
+      print('Error en analyzeBodyType: $e');
+      throw AppException('Error en análisis corporal: ${e.toString()}');
+    }
+  }
+
+  // Analizar solo cuerpo desde URL
+  Future<BodyAnalysisModel> analyzeBodyTypeFromUrl({
+    required String userId,
+    required String imageUrl,
+  }) async {
+    try {
+      // Verificar autenticación
+      if (_auth.currentUser == null || _auth.currentUser!.uid != userId) {
+        throw AppException('Usuario no autenticado o UID incorrecto');
+      }
+
+      // 1. Analizar con Roboflow usando URL
+      final analysisResult = await _callRoboflowAPIFromUrl(
+        model: _bodyAnalysisModel,
+        imageUrl: imageUrl,
+      );
+
+      // 2. Crear modelo de análisis
+      final bodyAnalysis = BodyAnalysisModel.fromRoboflowResponse(
+        userId: userId,
+        response: analysisResult,
+        imageUrl: imageUrl,
+      );
+
+      return bodyAnalysis;
+
+    } catch (e) {
+      print('Error en analyzeBodyTypeFromUrl: $e');
+      throw AppException('Error en análisis corporal: ${e.toString()}');
+    }
+  }
+
   Future<Map<String, dynamic>> analyzeCompleteProfile({
     required String userId,
     required File imageFile,
@@ -310,32 +489,63 @@ class RoboflowService {
   void _validateRoboflowResponse(Map<String, dynamic> response, String model) {
     print('Validating Roboflow response for $model: $response');
 
-    if (!response.containsKey('predictions')) {
-      throw AppException('Respuesta inválida de Roboflow: falta campo predictions');
-    }
-
-    final predictions = response['predictions'] as List;
-    if (predictions.isEmpty) {
-      if (model.contains('face-shape')) {
-        throw AppException('No se detectó ningún rostro en la imagen');
-      } else if (model.contains('hair')) {
-        throw AppException('No se detectó cabello en la imagen');
-      } else {
-        throw AppException('No se detectó contenido relevante en la imagen');
+    if (model.contains('bodymeasure')) {
+      // Validación especial para análisis corporal
+      if (!response.containsKey('predictions')) {
+        throw AppException('Respuesta inválida de Roboflow: falta campo predictions');
       }
-    }
 
-    final prediction = predictions[0];
-    if (!prediction.containsKey('class') || !prediction.containsKey('confidence')) {
-      throw AppException('Respuesta inválida: faltan campos requeridos');
-    }
+      final predictions = response['predictions'] as Map<String, dynamic>;
+      if (predictions.isEmpty) {
+        throw AppException('No se detectó información corporal en la imagen');
+      }
 
-    final confidence = prediction['confidence'];
-    if (confidence < 0.3) {
-      throw AppException(
-        'Confianza muy baja (${(confidence * 100).toStringAsFixed(1)}%). '
-            'Intenta con una imagen más clara.',
-      );
+      // Verificar que al menos una predicción tenga confianza aceptable
+      bool hasValidPrediction = false;
+      predictions.forEach((key, value) {
+        if (value is Map<String, dynamic>) {
+          final confidence = value['confidence'];
+          if (confidence != null && confidence >= 0.3) {
+            hasValidPrediction = true;
+          }
+        }
+      });
+
+      if (!hasValidPrediction) {
+        throw AppException(
+          'Confianza muy baja en análisis corporal. '
+              'Intenta con una imagen de cuerpo completo más clara.',
+        );
+      }
+    } else {
+      // Validación para análisis facial y de cabello
+      if (!response.containsKey('predictions')) {
+        throw AppException('Respuesta inválida de Roboflow: falta campo predictions');
+      }
+
+      final predictions = response['predictions'] as List;
+      if (predictions.isEmpty) {
+        if (model.contains('face-shape')) {
+          throw AppException('No se detectó ningún rostro en la imagen');
+        } else if (model.contains('hair')) {
+          throw AppException('No se detectó cabello en la imagen');
+        } else {
+          throw AppException('No se detectó contenido relevante en la imagen');
+        }
+      }
+
+      final prediction = predictions[0];
+      if (!prediction.containsKey('class') || !prediction.containsKey('confidence')) {
+        throw AppException('Respuesta inválida: faltan campos requeridos');
+      }
+
+      final confidence = prediction['confidence'];
+      if (confidence < 0.3) {
+        throw AppException(
+          'Confianza muy baja (${(confidence * 100).toStringAsFixed(1)}%). '
+              'Intenta con una imagen más clara.',
+        );
+      }
     }
   }
 
@@ -502,6 +712,120 @@ class RoboflowService {
           'Desenreda solo con acondicionador'
         ],
         'color': Color(0xFFFF7043),
+      },
+    };
+  }
+
+  // Obtener información sobre tipos de cuerpo
+  static Map<String, Map<String, dynamic>> getBodyTypeInfo() {
+    return {
+      'ecto': {
+        'name': 'Ectomorfo',
+        'description': 'Complexión delgada y esbelta naturalmente',
+        'characteristics': [
+          'Metabolismo rápido',
+          'Estructura ósea pequeña',
+          'Hombros y caderas estrechos',
+          'Dificultad para ganar peso'
+        ],
+        'clothing_tips': [
+          'Añadir capas para crear volumen',
+          'Patrones horizontales y texturas gruesas',
+          'Colores claros y brillantes',
+          'Chaquetas estructuradas'
+        ],
+        'color': Color(0xFF2196F3),
+      },
+      'meso': {
+        'name': 'Mesomorfo',
+        'description': 'Complexión atlética y naturalmente musculosa',
+        'characteristics': [
+          'Estructura ósea media',
+          'Hombros anchos',
+          'Cintura definida',
+          'Facilidad para ganar músculo'
+        ],
+        'clothing_tips': [
+          'Ropa que resalte la silueta natural',
+          'Cortes ajustados pero cómodos',
+          'Colores sólidos y vibrantes',
+          'Cinturones para definir cintura'
+        ],
+        'color': Color(0xFF4CAF50),
+      },
+      'endo': {
+        'name': 'Endomorfo',
+        'description': 'Complexión redondeada con tendencia a almacenar grasa',
+        'characteristics': [
+          'Estructura ósea grande',
+          'Metabolismo más lento',
+          'Facilidad para ganar peso',
+          'Curvas naturales'
+        ],
+        'clothing_tips': [
+          'Líneas verticales para alargar',
+          'Colores oscuros y monocromáticos',
+          'Cortes en A y empire waist',
+          'Evitar patrones muy llamativos'
+        ],
+        'color': Color(0xFFFF9800),
+      },
+    };
+  }
+
+  // Obtener información sobre formas de cuerpo
+  static Map<String, Map<String, dynamic>> getBodyShapeInfo() {
+    return {
+      'invert': {
+        'name': 'Triángulo Invertido',
+        'description': 'Hombros más anchos que caderas',
+        'characteristics': [
+          'Hombros anchos',
+          'Caderas estrechas',
+          'Torso proporcionado',
+          'Piernas delgadas'
+        ],
+        'clothing_tips': [
+          'Pantalones de colores claros',
+          'Faldas A-line y bootcut',
+          'Tops ajustados',
+          'Evitar hombreras pronunciadas'
+        ],
+        'color': Color(0xFFE91E63),
+      },
+      'pear': {
+        'name': 'Pera',
+        'description': 'Caderas más anchas que hombros',
+        'characteristics': [
+          'Hombros estrechos',
+          'Caderas anchas',
+          'Cintura definida',
+          'Muslos más llenos'
+        ],
+        'clothing_tips': [
+          'Tops con detalles llamativos',
+          'Colores claros arriba',
+          'Pantalones oscuros',
+          'Chaquetas que terminen en cadera'
+        ],
+        'color': Color(0xFF9C27B0),
+      },
+      'rectangle': {
+        'name': 'Rectángulo',
+        'description': 'Hombros, cintura y caderas de medidas similares',
+        'characteristics': [
+          'Silueta recta',
+          'Cintura poco definida',
+          'Proporciones equilibradas',
+          'Distribución uniforme'
+        ],
+        'clothing_tips': [
+          'Crear curvas con cinturones',
+          'Peplum tops y chaquetas ajustadas',
+          'Capas para añadir dimensión',
+          'Patrones y texturas interesantes'
+        ],
+        'color': Color(0xFF00BCD4),
       },
     };
   }
