@@ -61,3 +61,4 @@ flutter:
     - assets/images/
     - assets/models/
     - assets/icons/
+    - lib/data/models/

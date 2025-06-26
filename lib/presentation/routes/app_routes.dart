@@ -21,6 +21,11 @@ import '../screens/chat/chat_screen.dart';
 import '../screens/social/create_transformation_screen.dart';
 import '../screens/social/transformations_feed_screen.dart';
 import '../screens/style/color_palette_screen.dart';
+// ======== NUEVOS IMPORTS PARA RECOMENDACIONES ========
+import '../screens/wellness/personalized_recommendations_screen.dart';
+import '../widgets/recommendations/recommendations_category_screen.dart';
+import '../widgets/recommendations/recommendations_history_screen.dart';
+import '../widgets/recommendations/recommendations_trends_screen.dart';
 
 class AppRoutes {
   static GoRouter createRouter(AuthProvider authProvider) {
@@ -101,7 +106,7 @@ class AppRoutes {
         GoRoute(
           path: '/home',
           name: 'home',
-          builder: (context, state) => const HomeScreen(), // Cambiado al nuevo home
+          builder: (context, state) => const HomeScreen(),
         ),
 
         // Rutas de perfil
@@ -128,6 +133,41 @@ class AppRoutes {
           builder: (context, state) => const BodyAnalysisScreen(),
         ),
 
+        // ======== RUTAS DE RECOMENDACIONES PERSONALIZADAS ========
+
+        // Pantalla principal de recomendaciones personalizadas
+        GoRoute(
+          path: '/personalized-recommendations',
+          name: 'personalized-recommendations',
+          builder: (context, state) => const PersonalizedRecommendationsScreen(),
+        ),
+
+        // Recomendaciones por categoría específica
+        GoRoute(
+          path: '/recommendations/category/:category',
+          name: 'recommendations-category',
+          builder: (context, state) {
+            final category = state.pathParameters['category']!;
+            return RecommendationsCategoryScreen(category: category);
+          },
+        ),
+
+        // Historial de recomendaciones
+        GoRoute(
+          path: '/recommendations/history',
+          name: 'recommendations-history',
+          builder: (context, state) => const RecommendationsHistoryScreen(),
+        ),
+
+        // Tendencias y progreso personal
+        GoRoute(
+          path: '/recommendations/trends',
+          name: 'recommendations-trends',
+          builder: (context, state) => const RecommendationsTrendsScreen(),
+        ),
+
+        // ======== FIN RUTAS DE RECOMENDACIONES ========
+
         // Rutas sociales
         GoRoute(
           path: '/feed',
@@ -144,8 +184,6 @@ class AppRoutes {
           name: 'create-post',
           builder: (context, state) => const CreatePostScreen(),
         ),
-
-        // ======== NUEVAS RUTAS ========
 
         // Rutas de Chat con IA
         GoRoute(
@@ -181,7 +219,7 @@ class AppRoutes {
           builder: (context, state) => const ColorPaletteScreen(),
         ),
 
-        // Rutas de salud (existentes)
+        // Rutas de salud
         GoRoute(
           path: '/health-tips',
           name: 'health-tips',
