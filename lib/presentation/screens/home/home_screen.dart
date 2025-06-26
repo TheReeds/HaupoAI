@@ -89,31 +89,33 @@ class _ImprovedHomeScreenState extends State<HomeScreen>
                   position: _slideAnimation,
                   child: FadeTransition(
                     opacity: _fadeAnimation,
-                    child: Column(
-                      children: [
-                        // Sección de Bienvenida Personalizada
-                        _buildPersonalizedWelcome(context, authProvider),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          // Sección de Bienvenida Personalizada
+                          _buildPersonalizedWelcome(context, authProvider),
 
-                        // Chat Bot Access
-                        _buildChatBotAccess(context, authProvider),
+                          // Chat Bot Access
+                          _buildChatBotAccess(context, authProvider),
 
-                        // Análisis Rápido
-                        _buildQuickAnalysis(context, authProvider),
+                          // Análisis Rápido
+                          _buildQuickAnalysis(context, authProvider),
 
-                        // Transformaciones Destacadas
-                        _buildFeaturedTransformations(context),
+                          // Transformaciones Destacadas
+                          _buildFeaturedTransformations(context),
 
-                        // Paleta de Colores Personal
-                        _buildPersonalColorPalette(context, authProvider),
+                          // Paleta de Colores Personal
+                          _buildPersonalColorPalette(context, authProvider),
 
-                        // Últimas Publicaciones
-                        _buildRecentPosts(context),
+                          // Últimas Publicaciones
+                          _buildRecentPosts(context),
 
-                        // Consejos Diarios
-                        _buildDailyTips(context),
+                          // Consejos Diarios
+                          _buildDailyTips(context),
 
-                        const SizedBox(height: 100), // Espacio para FAB
-                      ],
+                          const SizedBox(height: 100), // Espacio para FAB
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -673,10 +675,14 @@ class _ImprovedHomeScreenState extends State<HomeScreen>
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Transformaciones Destacadas',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
+                Expanded(
+                  child: Text(
+                    'Transformaciones Destacadas',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
                   ),
                 ),
                 TextButton(
@@ -723,20 +729,25 @@ class _ImprovedHomeScreenState extends State<HomeScreen>
                   );
                 }
 
-                return ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  itemCount: transformations.length,
-                  itemBuilder: (context, index) {
-                    return Container(
-                      width: 200,
-                      margin: const EdgeInsets.only(right: 16),
-                      child: TransformationCard(
-                        transformation: transformations[index],
-                        isCompact: true,
-                      ),
-                    );
-                  },
+                return SizedBox(
+                  height: 280,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    itemCount: transformations.length,
+                    shrinkWrap: true,
+                    physics: ClampingScrollPhysics(),
+                    itemBuilder: (context, index) {
+                      return Container(
+                        width: 200,
+                        margin: const EdgeInsets.only(right: 16),
+                        child: TransformationCard(
+                          transformation: transformations[index],
+                          isCompact: true,
+                        ),
+                      );
+                    },
+                  ),
                 );
               },
             ),
@@ -966,17 +977,22 @@ class _ImprovedHomeScreenState extends State<HomeScreen>
                   );
                 }
 
-                return ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  itemCount: posts.length,
-                  itemBuilder: (context, index) {
-                    return Container(
-                      width: 160,
-                      margin: const EdgeInsets.only(right: 16),
-                      child: MiniPostCard(post: posts[index]),
-                    );
-                  },
+                return SizedBox(
+                  height: 200,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    itemCount: posts.length,
+                    shrinkWrap: true,
+                    physics: ClampingScrollPhysics(),
+                    itemBuilder: (context, index) {
+                      return Container(
+                        width: 160,
+                        margin: const EdgeInsets.only(right: 16),
+                        child: MiniPostCard(post: posts[index]),
+                      );
+                    },
+                  ),
                 );
               },
             ),

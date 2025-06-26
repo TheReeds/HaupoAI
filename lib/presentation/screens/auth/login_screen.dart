@@ -138,155 +138,149 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Spacer(),
-
-                // Logo y título
-                Column(
-                  children: [
-                    Container(
-                      width: 120,
-                      height: 120,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(24),
+        child: SingleChildScrollView(
+          reverse: true,
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: 24.0,
+              right: 24.0,
+              top: 24.0,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 24.0,
+            ),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 24),
+                  // Logo y título
+                  Column(
+                    children: [
+                      Container(
+                        width: 120,
+                        height: 120,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primaryContainer,
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        child: Icon(
+                          Icons.person_4_rounded,
+                          size: 60,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                       ),
-                      child: Icon(
-                        Icons.person_4_rounded,
-                        size: 60,
-                        color: Theme.of(context).colorScheme.primary,
+                      const SizedBox(height: 24),
+                      Text(
+                        'HuapoAI',
+                        style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 24),
-                    Text(
-                      'HuapoAI',
-                      style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Tu asistente de moda personal',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 48),
-
-                // Formulario
-                CustomTextField(
-                  label: 'Email',
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  prefixIcon: Icons.email_outlined,
-                  validator: Validators.validateEmail,
-                ),
-
-                const SizedBox(height: 16),
-
-                CustomTextField(
-                  label: 'Contraseña',
-                  controller: _passwordController,
-                  obscureText: true,
-                  prefixIcon: Icons.lock_outline,
-                  validator: Validators.validatePassword,
-                ),
-
-                const SizedBox(height: 16),
-
-                // Remember me y forgot password
-                Row(
-                  children: [
-                    Checkbox(
-                      value: _rememberMe,
-                      onChanged: (value) {
-                        setState(() {
-                          _rememberMe = value ?? false;
-                        });
-                      },
-                    ),
-                    const Text('Recordarme'),
-                    const Spacer(),
-                    TextButton(
-                      onPressed: _showForgotPasswordDialog,
-                      child: const Text('¿Olvidaste tu contraseña?'),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 24),
-
-                // Botón de login
-                Consumer<AuthProvider>(
-                  builder: (context, authProvider, _) {
-                    return CustomButton(
-                      text: 'Iniciar Sesión',
-                      onPressed: _handleEmailLogin,
-                      isLoading: authProvider.isLoading,
-                      width: double.infinity,
-                    );
-                  },
-                ),
-
-                const SizedBox(height: 16),
-
-                // Divider
-                Row(
-                  children: [
-                    const Expanded(child: Divider()),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        'o',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      const SizedBox(height: 8),
+                      Text(
+                        'Tu asistente de moda personal',
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
-                    ),
-                    const Expanded(child: Divider()),
-                  ],
-                ),
-
-                const SizedBox(height: 16),
-
-                // Google Sign-In
-                Consumer<AuthProvider>(
-                  builder: (context, authProvider, _) {
-                    return GoogleSignInButton(
-                      onPressed: _handleGoogleLogin,
-                      isLoading: authProvider.isLoading,
-                    );
-                  },
-                ),
-
-                const Spacer(),
-
-                // Register link
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text('¿No tienes cuenta? '),
-                    TextButton(
-                      onPressed: () => context.go('/register'),
-                      child: const Text(
-                        'Regístrate',
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                    ],
+                  ),
+                  const SizedBox(height: 48),
+                  // Formulario
+                  CustomTextField(
+                    label: 'Email',
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    prefixIcon: Icons.email_outlined,
+                    validator: Validators.validateEmail,
+                  ),
+                  const SizedBox(height: 16),
+                  CustomTextField(
+                    label: 'Contraseña',
+                    controller: _passwordController,
+                    obscureText: true,
+                    prefixIcon: Icons.lock_outline,
+                    validator: Validators.validatePassword,
+                  ),
+                  const SizedBox(height: 16),
+                  // Remember me y forgot password
+                  Row(
+                    children: [
+                      Checkbox(
+                        value: _rememberMe,
+                        onChanged: (value) {
+                          setState(() {
+                            _rememberMe = value ?? false;
+                          });
+                        },
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                      const Text('Recordarme'),
+                      const Spacer(),
+                      TextButton(
+                        onPressed: _showForgotPasswordDialog,
+                        child: const Text('¿Olvidaste tu contraseña?'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  // Botón de login
+                  Consumer<AuthProvider>(
+                    builder: (context, authProvider, _) {
+                      return CustomButton(
+                        text: 'Iniciar Sesión',
+                        onPressed: _handleEmailLogin,
+                        isLoading: authProvider.isLoading,
+                        width: double.infinity,
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  // Divider
+                  Row(
+                    children: [
+                      const Expanded(child: Divider()),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          'o',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                      const Expanded(child: Divider()),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  // Google Sign-In
+                  Consumer<AuthProvider>(
+                    builder: (context, authProvider, _) {
+                      return GoogleSignInButton(
+                        onPressed: _handleGoogleLogin,
+                        isLoading: authProvider.isLoading,
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  // Register link
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text('¿No tienes cuenta? '),
+                      TextButton(
+                        onPressed: () => context.go('/register'),
+                        child: const Text(
+                          'Regístrate',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
